@@ -45,5 +45,4 @@ contour_weights = normed_inverse_geometric_series(golden, 4)
 bass_line_motion = make_bass_line(20, primes, prime_weights, contour_weights)
 bass_line = np.cumsum(bass_line_motion, axis=0)
 rats = h_tools.hsv_to_gen_ratios(bass_line, primes)
-
 json.dump(rats, open('bass_line.json', 'w'), cls=h_tools.NpEncoder)
