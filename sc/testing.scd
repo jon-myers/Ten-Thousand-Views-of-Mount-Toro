@@ -1,4 +1,6 @@
-~fund = 50;
+~fund = 100;
+~trip = {arg a; a ++ (2*a) ++ (4*a)};
+
 ~registrate = {arg a; var first_oct, second_oct, third_oct, out;
 	a.postln;
 	first_oct = a[..2];
@@ -16,10 +18,10 @@
 
 
 
-~modes = File.open("/Users/student/documents/Myers/azure/modes.json", "r");
+~modes = File.open("/Users/jon/Documents/2021/azure/modes.json", "r");
 ~modes = ~modes.readAllString.parseYAML;
 ~modes = Array.fill(~modes.size, {arg i; ~modes[i].asFloat});
-
+~modes.readAllString
 
 
 
@@ -37,9 +39,10 @@
 	selections;
 });
 
-((
+~t_0 =[1, 1.2222222222222223, 1.5, 1.8333333333333333, 1.1666666666666667, 1.4, 1.6923076923076923]
+(
 p = Pbind(
-	\freq, Pseq(~dc_alg.value(~registrate.value(~modes[6]) * ~fund, 1000), inf),
+	\freq, Pseq(~dc_alg.value(~trip.value(~t_0) * ~fund, 1000), inf),
 	\dur, Prand( [0.05, 0.08, 0.09, 0.1,0.15,0.2,0.25,0.3], inf),
 	\vol, Prand([0.25, 0.4, 0.65], inf)
 ).play;

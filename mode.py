@@ -122,6 +122,6 @@ def build_mode(ratios, third_lims=[7/6, 9/7], mistuned_5th=50, mistuned_8ve=66,
         # aggregate harmonic distance
 
 # print(rats)
-ratios = get_possible_ratios()
-mode = build_mode(ratios)
-print(mode)
+# ratios = get_possible_ratios()
+# mode = build_mode(ratios)
+# print(mode)
