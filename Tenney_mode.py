@@ -7,7 +7,7 @@ def get_aggregate_hd(mode, trial):
     hd = 0
     for note in mode:
         hd += harmonic_distance_mixed(note, trial)
-    return hd 
+    return hd
 
 # def mistuned_filter(possible, mistuned_int, p_int, origin, oct=False):
 #     mt_min = h_tools.cents_to_hz(-mistuned_int, p_int)
@@ -37,16 +37,16 @@ def filter_8ves(choices, mode, dev=67):
         origin = mode[-4]
         diff = np.array([abs(h_tools.hz_to_cents(origin, i)) for i in choices])
         choices = choices[diff > dev]
-                
+
         origin = mode[-3]
         diff = np.array([abs(h_tools.hz_to_cents(origin, i)) for i in choices])
         choices = choices[diff > dev]
     else:
         origin = mode[-3]
         diff = np.array([abs(h_tools.hz_to_cents(origin, i)) for i in choices])
-        
+
         choices = choices[diff > dev]
-        
+
     return choices
 
 
@@ -60,21 +60,28 @@ def filter_by_limit(choices, lim, note):
     if len(out_choices) == 0: breakpoint()
     return out_choices
 
-def get_weight(mode, choices, alpha):
+def get_weight(mode, choices, alpha, last_mode=None):
+    lm_weighting = [1/3, 2/3]
     weight = [1 / (get_aggregate_hd(mode, i) ** alpha) for i in choices]
     weight = [i / sum(weight) for i in weight]
+    weight = np.array(weight)
+    if np.all(last_mode != None):
+        last_mode_weight = get_weight(last_mode, choices, alpha)
+        weight = lm_weighting[0] * last_mode_weight + lm_weighting[1] * weight
     return weight
 
-def build_mode(degrees, lower_lim, upper_lim, alpha=1):
+def build_mode(degrees, lower_lim, upper_lim, alpha, last_mode=None):
+    lm_weighting = [1/3, 2/3] # means harmonic distance weighting based on last
+    # mode is worth 1/3, while hd weighting from current mode is worth 2/3
+
     mode = [1]
     # third
     _3rds = degrees['3rds']
-    weight = [1 / (harmonic_distance_mixed(1, i) ** alpha) for i in _3rds]
-    weight = [i / sum(weight) for i in weight]
+    weight = get_weight(mode, _3rds, alpha, last_mode)
     third = np.random.choice(_3rds, p=weight)
     mode.append(third)
 
-    
+
     # fifth
     _5ths = degrees['5ths']
     if np.round(third, 5) == np.round(6/5, 5):
@@ -84,62 +91,64 @@ def build_mode(degrees, lower_lim, upper_lim, alpha=1):
             _5ths.remove(25/16)
     _5ths = filter_by_limit(_5ths, lower_lim, mode[-1])
     _5ths = filter_mistuned_5ths(_5ths, mode[0])
-    weight = [1 / (get_aggregate_hd(mode, i) ** alpha) for i in _5ths]
-    weight = [i / sum(weight) for i in weight]
+    weight = get_weight(mode, _5ths, alpha, last_mode)
     fifth = np.random.choice(_5ths, p=weight)
     mode.append(fifth)
-    
+
     # seventh
     _7ths = degrees['7ths']
     _7ths = filter_by_limit(_7ths, upper_lim, mode[-1])
     _7ths = filter_mistuned_5ths(_7ths, mode[1])
     _7ths = filter_8ves(_7ths, mode)
-    weight = get_weight(mode, _7ths, alpha)
+    weight = get_weight(mode, _7ths, alpha, last_mode)
     seventh = np.random.choice(_7ths, p=weight)
     mode.append(seventh)
-    
+
     # ninth
     _9ths = degrees['9ths']
     _9ths = filter_by_limit(_9ths, upper_lim, mode[-1]/2)
     # print(len(_9ths))
     _9ths = filter_mistuned_5ths(_9ths, mode[2]/2)
     _9ths = filter_8ves(_9ths, mode)
-    weight = get_weight(mode, _9ths, alpha)
+    weight = get_weight(mode, _9ths, alpha, last_mode)
     ninth = np.random.choice(_9ths, p=weight)
     mode.append(ninth)
-    
+
     # eleventh
     _11ths = degrees['11ths']
     _11ths = filter_by_limit(_11ths, upper_lim, mode[-1])
     _11ths = filter_mistuned_5ths(_11ths, mode[3]/2)
     _11ths = filter_8ves(_11ths, mode)
-    weight = get_weight(mode, _11ths, alpha)
+    weight = get_weight(mode, _11ths, alpha, last_mode)
     eleventh = np.random.choice(_11ths, p=weight)
     mode.append(eleventh)
-    
+
     # thirteenths
     _13ths = degrees['13ths']
     _13ths = filter_by_limit(_13ths, upper_lim, mode[-1])
     _13ths = filter_mistuned_5ths(_13ths, mode[4])
     _13ths = filter_8ves(_13ths, mode)
-    weight = get_weight(mode, _13ths, alpha)
+    weight = get_weight(mode, _13ths, alpha, last_mode)
     thirteenth = np.random.choice(_13ths, p=weight)
     mode.append(thirteenth)
-    return mode
+    return np.array(mode)
 
-def bass_motion(mode):
+
+def bass_motion(mode, alpha=4):
     primes = np.array((3, 5, 7, 11), dtype=float)
     choices = -1 * np.eye(len(primes))
     ratios = h_tools.hsv_to_gen_ratios(choices, primes=primes)
     # ratios = np.prod(primes ** choices, axis=1)
-    print(ratios)
+    weight = get_weight(mode, ratios, alpha)
+    bass_motion = np.random.choice(ratios, p=weight)
+    return bass_motion
 
-# potential_adds = [13/8, 16/13, 13/12, 24/13, 39/32, 64/39, 
-# 13/10, 20/13, 65/64, 128/65, 
-# 13/7, 14/13, 91/64, 128/91, 
-# 13/11, 22/13, 
+# potential_adds = [13/8, 16/13, 13/12, 24/13, 39/32, 64/39,
+# 13/10, 20/13, 65/64, 128/65,
+# 13/7, 14/13, 91/64, 128/91,
+# 13/11, 22/13,
 # 143/128, 256/143
-# 13/9, 18/13, 
+# 13/9, 18/13,
 # 117/64, 128/117]
 
 _3rds = [7/6, 75/64, 6/5, 11/9, 5/4, 9/7] #1.17, 1.29
@@ -149,24 +158,47 @@ _9ths = [21/20, 135/128, 77/72, 16/15, 15/14, 35/32, 12/11, 9/8, 75/64, 7/6]#1.0
 _11ths = [21/16, 11/8, 45/32, 7/5]#1.31, 1.4
 _13ths = [77/48, 8/5, 105/64, 18/11, 5/3, 27/16, 55/32, 12/7]#1.6, 1.71
 
-_3_adds = [16/13, 39/32, 13/10, 13/11]
-_5_adds = [13/10, 20/13, 91/64, 128/91, 13/9]
+_3_adds = [16/13, 39/32, 13/11]
+_5_adds = [20/13, 91/64, 128/91, 13/9]
 _7_adds = [13/7, 256/143, 117/64]
 _9_adds = [14/13, 143/128, 128/117]
-_11_adds = [18/13]
+_11_adds = [13/10, 18/13]
 _13_adds = [13/8, 64/39, 22/13]
 
 degrees = {
-    '3rds': _3rds + _3_adds, 
-    '5ths': _5ths + _5_adds, 
-    '7ths': _7ths + _7_adds, 
-    '9ths': _9ths + _9_adds, 
-    '11ths': _11ths + _11_adds, 
-    '13ths': _13ths + _13_adds
+    '3rds': _3rds,
+    '5ths': _5ths,
+    '7ths': _7ths,
+    '9ths': _9ths,
+    '11ths': _11ths,
+    '13ths': _13ths
     }
+
+with_13 = False
+if with_13:
+    degrees['3rds'] += _3_adds
+    degrees['5ths'] += _5_adds
+    degrees['7ths'] += _7_adds
+    degrees['9ths'] += _9_adds
+    degrees['11ths'] += _11_adds
+    degrees['13ths'] += _13_adds
+
+
+
 lower_lim = [7/6, 9/7]
 upper_lim = [9/8, 4/3]
 
-modes = [build_mode(degrees, lower_lim, upper_lim, 4) for i in range(10)]
+# modes = [build_mode(degrees, lower_lim, upper_lim, 4) for i in range(10)]
+# json.dump(modes, open('modes.json', 'w'), cls=h_tools.NpEncoder)
+
+
+
+modes = [build_mode(degrees, lower_lim, upper_lim, 4)]
+for i in range(10):
+    bm = bass_motion(modes[-1])
+    mode = build_mode(degrees, lower_lim, upper_lim, 4, modes[-1]/bm)
+    mode = mode * bm * modes[-1][0]
+    while mode[0] >=2:
+        mode /= 2
+    modes.append(mode)
 json.dump(modes, open('modes.json', 'w'), cls=h_tools.NpEncoder)
-bass_motion(1)
