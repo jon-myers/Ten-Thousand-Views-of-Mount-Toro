@@ -39,7 +39,7 @@
 
 
 ((
-	~mode = [1, 39/32, 13/9];
+	~mode = ~modes[2];
 p = Pbind(
 		\freq, Pseq(~dc_alg.value(~trip.value(~mode) * ~fund, 1000), inf),
 	\dur, Prand( [0.05, 0.08, 0.09, 0.1,0.15,0.2,0.25,0.3], inf),
