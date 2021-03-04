@@ -135,7 +135,7 @@ def build_mode(degrees, lower_lim, upper_lim, alpha, last_mode=None):
 
 
 def bass_motion(mode, alpha=4):
-    primes = np.array((3, 5, 7, 11), dtype=float)
+    primes = np.array((3, 5, 7), dtype=float)
     choices = -1 * np.eye(len(primes))
     ratios = h_tools.hsv_to_gen_ratios(choices, primes=primes)
     # ratios = np.prod(primes ** choices, axis=1)
@@ -194,7 +194,7 @@ upper_lim = [9/8, 4/3]
 
 
 modes = [build_mode(degrees, lower_lim, upper_lim, 4)]
-for i in range(10):
+for i in range(50):
     bm = bass_motion(modes[-1])
     mode = build_mode(degrees, lower_lim, upper_lim, 4, modes[-1]/bm)
     mode = mode * bm * modes[-1][0]
@@ -202,3 +202,19 @@ for i in range(10):
         mode /= 2
     modes.append(mode)
 json.dump(modes, open('modes.json', 'w'), cls=h_tools.NpEncoder)
+
+funds = np.array([mode[0] for mode in modes])
+lim = 1.05
+inds = np.nonzero(funds<lim)[0]
+funds = funds[inds][1:]
+cents = [h_tools.hz_to_cents(f, 1) for f in funds]
+spread = [cents[i] / inds[i] for i in range(len(funds))]
+for i, ind in enumerate(inds):
+    if ind >= 10 and ind < 20:
+        print(ind)
+        print(round(spread[i], 2))
+# 
+# print(inds)
+# print(funds)
+# print([round(i, 2) for i in cents])
+# print([round(i, 2) for i in spread])

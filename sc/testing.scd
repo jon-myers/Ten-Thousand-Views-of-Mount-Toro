@@ -15,9 +15,9 @@
 
 
 (
-~modes = File.open("/Users/student/Documents/Myers/azure/modes.json", "r");
+// ~modes = File.open("/Users/student/Documents/Myers/azure/modes.json", "r");
 
-// ~modes = File.open("/Users/jon/Documents/2021/azure/modes.json", "r");
+~modes = File.open("/Users/jon/Documents/2021/azure/modes.json", "r");
 ~modes = ~modes.readAllString.parseYAML;
 ~modes = Array.fill(~modes.size, {arg i; ~modes[i].asFloat});
 );
@@ -39,14 +39,15 @@
 
 
 ((
-	~mode = ~modes[2];
+	~mode = ~modes[7];
 p = Pbind(
-		\freq, Pseq(~dc_alg.value(~trip.value(~mode) * ~fund, 1000), inf),
-	\dur, Prand( [0.05, 0.08, 0.09, 0.1,0.15,0.2,0.25,0.3], inf),
+		\freq, Pseq(~dc_alg.value(~trip.value(~mode[..3]) * ~fund, 1000), inf),
+	\dur, Prand( [0.1,0.15,0.2,0.25,0.3], inf),
 	\vol, Prand([0.25, 0.4, 0.65], inf)
 ).play;
 );
-// {Pan2.ar(SinOsc.ar(~fund * ~mode[0], 0, 0.0125))}.play;
+~mode[0].postln;
+{Pan2.ar(SinOsc.ar(~fund * ~mode[0], 0, 0.0125))}.play;
 )
 
 a = [0, 1, 2, 3, 4]
