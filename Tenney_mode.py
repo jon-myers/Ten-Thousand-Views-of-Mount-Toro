@@ -213,7 +213,7 @@ for i, ind in enumerate(inds):
     if ind >= 10 and ind < 20:
         print(ind)
         print(round(spread[i], 2))
-# 
+#
 # print(inds)
 # print(funds)
 # print([round(i, 2) for i in cents])

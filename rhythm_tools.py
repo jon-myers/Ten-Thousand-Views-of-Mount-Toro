@@ -10,10 +10,10 @@ def nPVI(d):
 def nCVI(d):
     matrix = [list(i) for i in itertools.combinations(d, 2)]
     matrix = [nPVI(i) for i in matrix]
-    return sum(matrix) / len(matrix)    
-    
-    
-    
+    return sum(matrix) / len(matrix)
+
+
+
 def rhythmic_sequence_maker(num_of_thoughts,nCVI_average,factor=2.0):
     section_durs = factor ** np.random.normal(size=2)
     while abs(nCVI(section_durs) - nCVI_average) > 1.0:
@@ -28,7 +28,7 @@ def rhythmic_sequence_maker(num_of_thoughts,nCVI_average,factor=2.0):
         # print(ct)
     section_durs /= np.sum(section_durs)
     return section_durs
-    
+
 def easy_midi_generator(notes, file_name, midi_inst_name):
     notes = sorted(notes, key=(lambda x: x[1]))
     score = pretty_midi.PrettyMIDI()
@@ -47,33 +47,41 @@ def easy_midi_generator(notes, file_name, midi_inst_name):
     score.instruments.append(instrument)
     score.write(file_name)
 
-def teehi_specifier(dur_tot, sequence, size, start_time=0, nCVI=10, repeats=3, 
-                    endnote=2, emphasis=2.5, seed=False):
+def teehi_specifier(dur_tot, sequence, size, start_time=0, nCVI=10, repeats=3,
+                    endnote=2, emphasis=1.5, seed=False, order=1, last=False):
     '''size is number of notes in phrase repeated to form teehi'''
-    
+
     endnote_index = [i for i in range(len(sequence)) if sequence[i] == endnote][-1]
     sequence = sequence[:endnote_index+1]
     durs = rhythmic_sequence_maker(len(sequence), nCVI)
-    durs[-1] *= emphasis
+    # durs[-1] *= emphasis
+
+    max_dur_of_phrase = np.max(durs[-size:])
+    if durs[-1] < max_dur_of_phrase:
+        durs[-1] = emphasis * max_dur_of_phrase
     dur_phrase = durs[-size:]
     durs = np.concatenate((durs, dur_phrase, dur_phrase))[:-1]
     durs = [dur_tot * i / sum(durs) for i in durs] + [dur_tot]
     starts = [sum(durs[:i]) for i in range(len(durs))]
     phrase = sequence[-size:]
     sequence = sequence + phrase + phrase
-    starts += [dur_tot]   
-    notes = [[60+sequence[i], starts[i]+start_time, 0.1, 60] for i in range(len(sequence))]
+    print(sequence)
+    print()
+    starts += [dur_tot]
+    notes = [[sequence[i], starts[i]+start_time, 0.1, 60] for i in range(len(sequence))]
+    if last == False:
+        notes = notes[:-1]
     if seed == False:
         return notes
     else:
-        return notes, sequence[-1]
-    
-    
+        return notes, sequence[-order:]
 
 
 
 
-# 
+
+
+#
 # dur = 60 * 2
 # num_of_sections = 13
 # avg_td = 2
@@ -82,7 +90,7 @@ def teehi_specifier(dur_tot, sequence, size, start_time=0, nCVI=10, repeats=3,
 # starts = [sum(durs[:i]) for i in range(len(durs))]
 # tds = rhythmic_sequence_maker(num_of_sections, 10) * avg_td * num_of_sections
 # ncvis = rhythmic_sequence_maker(num_of_sections, 10) * num_of_sections * avg_ncvi
-# 
+#
 # all_events = []
 # for s in range(num_of_sections):
 #     num_of_attacks = int(tds[s] * durs[s] // 1)
@@ -98,4 +106,4 @@ def teehi_specifier(dur_tot, sequence, size, start_time=0, nCVI=10, repeats=3,
 
 
 # for one cycle, single drum, 13 modes long, each has a different temporal density
-# and different 
+# and different
