@@ -39,8 +39,8 @@ SynthDef('sampler', {|midinote = 0|
 
 
 (
-~modes = File.open("/Users/student/Documents/Myers/azure/modes.json", "r");
-// ~modes = File.open("/Users/jon/Documents/2021/azure/modes.json", "r");
+// ~modes = File.open("/Users/student/Documents/Myers/azure/modes.json", "r");
+~modes = File.open("/Users/jon/Documents/2021/azure/modes.json", "r");
 ~modes = ~modes.readAllString.parseYAML;
 ~modes = Array.fill(~modes.size, {arg i; ~modes[i].asFloat});
 ~triads = Array.fill(~modes.size, {arg i; ~modes[i][..2]});
@@ -58,6 +58,12 @@ SynthDef('sampler', {|midinote = 0|
 
 });
 );
+
+~divs = Array.fill(~modes.size, {[3, 4, 5, 6, 7, 8, 9, 10, 11].choose});
+~melody_durs = Array.fill(~divs.size, {arg i;
+	Array.fill(~divs[i], {1/~divs[i]})
+}).flat;
+
 (
 ~chords = Pbind(
 	\freq, Pseq(~fund * ~quartet, 1),
@@ -67,14 +73,11 @@ SynthDef('sampler', {|midinote = 0|
 ~melody = Pbind(
 	\freq, Pseq(Array.fill(~modes.size, {arg i; Pseq(~dc_alg.value(~fund * 2 * ~modes[i], ~divs[i]), 1)})),
 	\dur, Pseq(~melody_durs, 1)
-))
+));
+
 (
 ~chords.play;
 ~melody.play;
 )
 
-~divs = Array.fill(~modes.size, {[3, 4, 5, 6, 7, 8, 9, 10, 11].choose});
-~melody_durs = Array.fill(~divs.size, {arg i;
-	Array.fill(~divs[i], {1/~divs[i]})
-}).flat;
-choose
+

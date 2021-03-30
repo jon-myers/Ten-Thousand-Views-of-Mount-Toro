@@ -65,8 +65,6 @@ def teehi_specifier(dur_tot, sequence, size, start_time=0, nCVI=10, repeats=3,
     starts = [sum(durs[:i]) for i in range(len(durs))]
     phrase = sequence[-size:]
     sequence = sequence + phrase + phrase
-    print(sequence)
-    print()
     starts += [dur_tot]
     notes = [[sequence[i], starts[i]+start_time, 0.1, 60] for i in range(len(sequence))]
     if last == False:
@@ -75,6 +73,8 @@ def teehi_specifier(dur_tot, sequence, size, start_time=0, nCVI=10, repeats=3,
         return notes
     else:
         return notes, sequence[-order:]
+
+
 
 
 
