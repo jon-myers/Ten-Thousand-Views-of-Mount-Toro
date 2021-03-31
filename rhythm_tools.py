@@ -29,6 +29,7 @@ def rhythmic_sequence_maker(num_of_thoughts,nCVI_average,factor=2.0):
     section_durs /= np.sum(section_durs)
     return section_durs
 
+
 def easy_midi_generator(notes, file_name, midi_inst_name):
     notes = sorted(notes, key=(lambda x: x[1]))
     score = pretty_midi.PrettyMIDI()
