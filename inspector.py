@@ -6,7 +6,7 @@ import numpy as np
 modes = json.load(open('modes.json', 'r'))
 
 from rhythm_tools import rhythmic_sequence_maker as rsm
-from rhythm_tools import nCVI
+from rhythm_tools import nCVI, easy_midi_generator
 
 a = rsm(10, 8)
 offset = np.random.rand()
@@ -52,12 +52,18 @@ def event_times_fitter(A, events, nCVI, dur_tot):
     B = offset_durs(durs, offset) * dur_tot
     return B
 
-
-A = event_times_maker(10, 20, 1)
-
-B = event_times_fitter(A, 4, 20, 1)
+init_nCVI = 10
+A = event_times_maker(40, init_nCVI, 30)
+B = event_times_fitter(A, 31, init_nCVI, 30)
 print(get_internal_nCVI(A))
 print(get_internal_nCVI(B))
+
+notes_A = [[60, i, 1, 80] for i in A]
+notes_B = [[61, i, 1, 80] for i in B]
+notes = notes_A + notes_B
+easy_midi_generator(notes, 'midi/notes.MIDI', 'Acoustic Grand Piano')
+# easy_midi_generator(notes_B, 'midi/notes_B.MIDI', 'Acoustic Grand Piano')
+
 
 # B = event_times_maker(7, 10, 1)
 # starts = np.sort(np.concatenate((A, B)))
