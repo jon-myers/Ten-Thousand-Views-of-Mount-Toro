@@ -4,7 +4,7 @@
 ~modes = Array.fill(~modes.size, {arg i; ~modes[i].asFloat});
 
 
-~mode = ~modes[11]
+~mode = ~modes[12]
 ~mode = ~mode.sort;
 ~fund = 100;
 ~degree_sieve = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];

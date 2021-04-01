@@ -53,8 +53,8 @@ def event_times_fitter(A, events, nCVI, dur_tot):
     return B
 
 init_nCVI = 10
-A = event_times_maker(40, init_nCVI, 30)
-B = event_times_fitter(A, 31, init_nCVI, 30)
+A = event_times_maker(8, init_nCVI, 10)
+B = event_times_fitter(A, 6, init_nCVI, 10)
 print(get_internal_nCVI(A))
 print(get_internal_nCVI(B))
 
@@ -62,11 +62,3 @@ notes_A = [[60, i, 1, 80] for i in A]
 notes_B = [[61, i, 1, 80] for i in B]
 notes = notes_A + notes_B
 easy_midi_generator(notes, 'midi/notes.MIDI', 'Acoustic Grand Piano')
-# easy_midi_generator(notes_B, 'midi/notes_B.MIDI', 'Acoustic Grand Piano')
-
-
-# B = event_times_maker(7, 10, 1)
-# starts = np.sort(np.concatenate((A, B)))
-# print(starts)
-# internal_durs = [starts[i+1] - starts[i] for i in range(len(starts) - 1)]
-# print(nCVI(internal_durs))
