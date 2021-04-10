@@ -1,7 +1,8 @@
-from mode import harmonic_distance_mixed
 from harmony_tools import utils as h_tools
 import numpy as np
 import json
+from fractions import Fraction
+import math
 
 def get_aggregate_hd(mode, trial):
     hd = 0
@@ -21,6 +22,19 @@ def get_aggregate_hd(mode, trial):
 #         filter = np.any((condition_1, condition_3), axis=0)
 #     return filter
 
+def harmonic_distance(frac):
+    return np.log(frac[0] * frac[1])
+
+def harmonic_distance_mixed(ratio1, ratio2):
+    """Gets harmonic distance between two decimal ratios"""
+    f1 = Fraction(ratio1).limit_denominator(10000)
+    f2 = Fraction(ratio2).limit_denominator(10000)
+    int1 = f1.numerator * f2.denominator
+    int2 = f2.numerator * f1.denominator
+    gcd = math.gcd(int1, int2)
+    int1 /= gcd
+    int2 /= gcd
+    return harmonic_distance((int1, int2))
 
 def filter_mistuned_5ths(choices, origin, dev=50):
     choices = np.array(choices)
@@ -138,83 +152,76 @@ def bass_motion(mode, alpha=4):
     primes = np.array((3, 5, 7), dtype=float)
     choices = -1 * np.eye(len(primes))
     ratios = h_tools.hsv_to_gen_ratios(choices, primes=primes)
-    # ratios = np.prod(primes ** choices, axis=1)
     weight = get_weight(mode, ratios, alpha)
     bass_motion = np.random.choice(ratios, p=weight)
     return bass_motion
 
-# potential_adds = [13/8, 16/13, 13/12, 24/13, 39/32, 64/39,
-# 13/10, 20/13, 65/64, 128/65,
-# 13/7, 14/13, 91/64, 128/91,
-# 13/11, 22/13,
-# 143/128, 256/143
-# 13/9, 18/13,
-# 117/64, 128/117]
-
-_3rds = [7/6, 75/64, 6/5, 11/9, 5/4, 9/7] #1.17, 1.29
-_5ths = [7/5, 45/32, 3/2, 25/16] #1.4, 1.56
-_7ths = [7/4, 9/5, 11/6, 15/8] #1.75, 1.875
-_9ths = [21/20, 135/128, 77/72, 16/15, 15/14, 35/32, 12/11, 9/8, 75/64, 7/6]#1.05, 1.17
-_11ths = [21/16, 11/8, 45/32, 7/5]#1.31, 1.4
-_13ths = [77/48, 8/5, 105/64, 18/11, 5/3, 27/16, 55/32, 12/7]#1.6, 1.71
-
-_3_adds = [16/13, 39/32, 13/11]
-_5_adds = [20/13, 91/64, 128/91, 13/9]
-_7_adds = [13/7, 256/143, 117/64]
-_9_adds = [14/13, 143/128, 128/117]
-_11_adds = [13/10, 18/13]
-_13_adds = [13/8, 64/39, 22/13]
-
-degrees = {
-    '3rds': _3rds,
-    '5ths': _5ths,
-    '7ths': _7ths,
-    '9ths': _9ths,
-    '11ths': _11ths,
-    '13ths': _13ths
-    }
-
-with_13 = False
-if with_13:
-    degrees['3rds'] += _3_adds
-    degrees['5ths'] += _5_adds
-    degrees['7ths'] += _7_adds
-    degrees['9ths'] += _9_adds
-    degrees['11ths'] += _11_adds
-    degrees['13ths'] += _13_adds
 
 
 
-lower_lim = [7/6, 9/7]
-upper_lim = [9/8, 4/3]
+def make_mode_sequence(alpha=4):
+    
+    _3rds = [7/6, 75/64, 6/5, 11/9, 5/4, 9/7] #1.17, 1.29
+    _5ths = [7/5, 45/32, 3/2, 25/16] #1.4, 1.56
+    _7ths = [7/4, 9/5, 11/6, 15/8] #1.75, 1.875
+    _9ths = [21/20, 135/128, 77/72, 16/15, 15/14, 35/32, 12/11, 9/8, 75/64, 7/6]#1.05, 1.17
+    _11ths = [21/16, 11/8, 45/32, 7/5]#1.31, 1.4
+    _13ths = [77/48, 8/5, 105/64, 18/11, 5/3, 27/16, 55/32, 12/7]#1.6, 1.71
 
-# modes = [build_mode(degrees, lower_lim, upper_lim, 4) for i in range(10)]
-# json.dump(modes, open('modes.json', 'w'), cls=h_tools.NpEncoder)
+    _3_adds = [16/13, 39/32, 13/11]
+    _5_adds = [20/13, 91/64, 128/91, 13/9]
+    _7_adds = [13/7, 256/143, 117/64]
+    _9_adds = [14/13, 143/128, 128/117]
+    _11_adds = [13/10, 18/13]
+    _13_adds = [13/8, 64/39, 22/13]
 
+    degrees = {
+        '3rds': _3rds,
+        '5ths': _5ths,
+        '7ths': _7ths,
+        '9ths': _9ths,
+        '11ths': _11ths,
+        '13ths': _13ths
+        }
 
+    with_13 = False
+    if with_13:
+        degrees['3rds'] += _3_adds
+        degrees['5ths'] += _5_adds
+        degrees['7ths'] += _7_adds
+        degrees['9ths'] += _9_adds
+        degrees['11ths'] += _11_adds
+        degrees['13ths'] += _13_adds
 
-modes = [build_mode(degrees, lower_lim, upper_lim, 4)]
-for i in range(50):
-    bm = bass_motion(modes[-1])
-    mode = build_mode(degrees, lower_lim, upper_lim, 4, modes[-1]/bm)
-    mode = mode * bm * modes[-1][0]
-    while mode[0] >=2:
-        mode /= 2
-    modes.append(mode)
-json.dump(modes, open('modes.json', 'w'), cls=h_tools.NpEncoder)
+    lower_lim = [7/6, 9/7]
+    upper_lim = [9/8, 4/3]
+    
+    len_inds = 0
+    while len_inds < 1:
+        modes = [build_mode(degrees, lower_lim, upper_lim, alpha)]
+        for i in range(50):
+            bm = bass_motion(modes[-1])
+            mode = build_mode(degrees, lower_lim, upper_lim, alpha, modes[-1]/bm)
+            mode = mode * bm * modes[-1][0]
+            while mode[0] >=2:
+                mode /= 2
+            modes.append(mode)
+        json.dump(modes, open('modes.json', 'w'), cls=h_tools.NpEncoder)
+        funds = np.array([mode[0] for mode in modes])
+        lim = 0.05
+        inds = np.nonzero(np.logical_or(funds < 1 + lim, funds > 2 - lim))[0]
+        funds = funds[inds][1:]
+        cents = [h_tools.hz_to_cents(f, 1) for f in funds]
+        inds = inds[np.where(inds >= 20)]
+        inds = inds[np.where(inds < 30)]
+        len_inds = len(inds)
 
-funds = np.array([mode[0] for mode in modes])
-lim = 1.05
-inds = np.nonzero(funds<lim)[0]
-funds = funds[inds][1:]
-cents = [h_tools.hz_to_cents(f, 1) for f in funds]
-spread = [cents[i] / inds[i] for i in range(len(funds))]
-for i, ind in enumerate(inds):
-    if ind >= 10 and ind < 20:
-        print(ind)
-        print(round(spread[i], 2))
-#
-# print(inds)
-# print(funds)
-# print([round(i, 2) for i in cents])
-# print([round(i, 2) for i in spread])
+    funds = [i[0] for i in modes][:inds[0]+1]
+    off = funds[-1]
+    if off > 1.5: off /= 2
+    base = math.e ** (math.log(1/off) / (len(funds) - 1))
+    mult = base ** np.arange(inds[0])
+    modes = np.array(modes[:inds[0]])
+    mult = np.expand_dims(mult, 1)
+    out = mult * modes
+    return out

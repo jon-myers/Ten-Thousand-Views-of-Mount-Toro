@@ -14,7 +14,8 @@ def nCVI(d):
 
 
 
-def rhythmic_sequence_maker(num_of_thoughts,nCVI_average,factor=2.0):
+def rhythmic_sequence_maker(num_of_thoughts, nCVI_average, factor=2.0, start_times=False):
+    
     section_durs = factor ** np.random.normal(size=2)
     while abs(nCVI(section_durs) - nCVI_average) > 1.0:
         section_durs = factor ** np.random.normal(size=2)
@@ -25,9 +26,13 @@ def rhythmic_sequence_maker(num_of_thoughts,nCVI_average,factor=2.0):
             ct+=1
             next_section_durs = np.append(section_durs, [factor ** np.random.normal()])
         section_durs = next_section_durs
-        # print(ct)
     section_durs /= np.sum(section_durs)
-    return section_durs
+    if start_times:
+        cumsum = np.cumsum(section_durs)[:-1]
+        start_times = np.insert(cumsum, 0, 0)
+        return start_times
+    else: 
+        return section_durs
 
 
 def easy_midi_generator(notes, file_name, midi_inst_name):
