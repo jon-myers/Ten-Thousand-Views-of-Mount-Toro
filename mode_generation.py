@@ -159,8 +159,8 @@ def bass_motion(mode, alpha=4):
 
 
 
-def make_mode_sequence(alpha=4):
-    
+def make_mode_sequence(size_lims=(20, 30), alpha=4):
+
     _3rds = [7/6, 75/64, 6/5, 11/9, 5/4, 9/7] #1.17, 1.29
     _5ths = [7/5, 45/32, 3/2, 25/16] #1.4, 1.56
     _7ths = [7/4, 9/5, 11/6, 15/8] #1.75, 1.875
@@ -195,7 +195,7 @@ def make_mode_sequence(alpha=4):
 
     lower_lim = [7/6, 9/7]
     upper_lim = [9/8, 4/3]
-    
+
     len_inds = 0
     while len_inds < 1:
         modes = [build_mode(degrees, lower_lim, upper_lim, alpha)]
@@ -212,8 +212,8 @@ def make_mode_sequence(alpha=4):
         inds = np.nonzero(np.logical_or(funds < 1 + lim, funds > 2 - lim))[0]
         funds = funds[inds][1:]
         cents = [h_tools.hz_to_cents(f, 1) for f in funds]
-        inds = inds[np.where(inds >= 20)]
-        inds = inds[np.where(inds < 30)]
+        inds = inds[np.where(inds >= size_lims[0])]
+        inds = inds[np.where(inds < size_lims[1])]
         len_inds = len(inds)
 
     funds = [i[0] for i in modes][:inds[0]+1]

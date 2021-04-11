@@ -4,7 +4,6 @@ import json, math
 import numpy_indexed as npi
 from fractions import Fraction
 
-
 def normed_inverse_geometric_series(mult, size):
     series = [1/(mult ** i) for i in range(size)]
     series = [i / sum(series) for i in series]
