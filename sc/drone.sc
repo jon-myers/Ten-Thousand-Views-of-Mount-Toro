@@ -1,6 +1,6 @@
 o = Server.default.options;
 o.sampleRate = 192000;
-o.device
+o.devices
 
 ServerOptions.devices
 o.device = "CA DacMagic 200M 2.0"
@@ -11,6 +11,15 @@ o.device = "CA DacMagic 200M 2.0"
 ~modes = File.open("/Users/jon/Documents/2021/azure/JSON/modes.JSON", "r");
 ~modes = ~modes.readAllString.parseYAML;
 ~modes = Array.fill(~modes.size, {arg i; ~modes[i].asFloat});
+
+
+~modes = File.open("/Users/student/Documents/Myers/azure/test_modes.JSON", "r");
+~modes = ~modes.readAllString.parseYAML;
+~modes = Array.fill(~modes.size, {arg i; ~modes[i].asFloat});
+
+~layer2 = File.open("/Users/student/Documents/Myers/azure/test_2nd_layer.JSON", "r");
+~layer2 = ~layer2.readAllString.parseYAML;
+~layer2 = Array.fill(~layer2.size, {arg i; ~layer2[i].asFloat});
 
 ~registrate = {|mode=#[0, 0, 0, 0, 0, 0, 0], octs=4, fund=200|
 	var group_index = Array.fill(mode.size, {arg i; (octs*(i+1)/(mode.size+1)).floor});
@@ -48,7 +57,7 @@ o.device = "CA DacMagic 200M 2.0"
 	}).add
 })
 
-~freqs = ~registrate.value(~modes[0][..4], 3, 100)
+~freqs = ~registrate.value(~modes[0][..4], 3, 150);
 ~vols = Array.fill(~freqs.size, {0.1});
 (x = ~startSynth.value(~freqs, ~vols);
 (
@@ -61,7 +70,6 @@ z = Array.fill(~freqs.size, {Pbrown(0.0, 1.0, 0.1, inf).asStream});
 		new_vals = Array.fill(~freqs.size, {arg i; z[i].next});
 		cutoff = ~cutoffStream.next;
 		rq = ~rqStream.next;
-		cutoff.postln;
 		x.set(\vols, new_vals);
 		x.set(\cutoff, cutoff);
 		x.set(\rq, rq);
@@ -70,9 +78,29 @@ z = Array.fill(~freqs.size, {Pbrown(0.0, 1.0, 0.1, inf).asStream});
 }.fork;
 ));
 
-x.set(\freqs, ~registrate.value(~modes[3][..4], 3, 100))
+x.set(\freqs, ~registrate.value(~modes[0][..4], 3, 150))
+x.set(\freqs, ~registrate.value(2*~layer2[0][..4], 3, 150))
+x.set(\freqs, ~registrate.value(~modes[1][..4], 3, 150))
+x.set(\freqs, ~registrate.value(2*~layer2[1][..4], 3, 150))
+x.set(\freqs, ~registrate.value(~modes[2][..4], 3, 150))
+x.set(\freqs, ~registrate.value(1*~layer2[2][..4], 3, 150))
+x.set(\freqs, ~registrate.value(0.5*~modes[3][..4], 3, 150))
+x.set(\freqs, ~registrate.value(1*~layer2[3][..4], 3, 150))
+x.set(\freqs, ~registrate.value(0.5*~modes[4][..4], 3, 150))
+x.set(\freqs, ~registrate.value(0.5*~layer2[4][..4], 3, 150))
+x.set(\freqs, ~registrate.value(~modes[5][..4], 3, 150))
+x.set(\freqs, ~registrate.value(2*~layer2[5][..4], 3, 150))
+x.set(\freqs, ~registrate.value(~modes[6][..4], 3, 150))
+x.set(\freqs, ~registrate.value(1*~layer2[6][..4], 3, 150))
+x.set(\freqs, ~registrate.value(~modes[7][..4], 3, 150))
+x.set(\freqs, ~registrate.value(1*~layer2[7][..4], 3, 150))
+x.set(\freqs, ~registrate.value(0.5*~modes[8][..4], 3, 150))
 
+~layer2[3][0]*2 / ~modes[4][0]
+8/7
 
+~layer2[0] / ~modes[0]
+~modes[1]
 
 	[4, 5]*[6, 7]
 
