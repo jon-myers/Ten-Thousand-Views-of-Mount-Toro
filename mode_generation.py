@@ -159,7 +159,7 @@ def bass_motion(mode, alpha=4):
 
 
 
-def make_mode_sequence(size_lims=(20, 30), alpha=4):
+def make_mode_sequence(size_lims=(6, 30), alpha=4):
 
     _3rds = [7/6, 75/64, 6/5, 11/9, 5/4, 9/7] #1.17, 1.29
     _5ths = [7/5, 45/32, 3/2, 25/16] #1.4, 1.56
@@ -206,7 +206,7 @@ def make_mode_sequence(size_lims=(20, 30), alpha=4):
             while mode[0] >=2:
                 mode /= 2
             modes.append(mode)
-        json.dump(modes, open('modes.json', 'w'), cls=h_tools.NpEncoder)
+        # json.dump(modes, open('modes.json', 'w'), cls=h_tools.NpEncoder)
         funds = np.array([mode[0] for mode in modes])
         lim = 0.05
         inds = np.nonzero(np.logical_or(funds < 1 + lim, funds > 2 - lim))[0]
@@ -222,6 +222,14 @@ def make_mode_sequence(size_lims=(20, 30), alpha=4):
     base = math.e ** (math.log(1/off) / (len(funds) - 1))
     mult = base ** np.arange(inds[0])
     modes = np.array(modes[:inds[0]])
+    print(len(modes), off)
+    for i, item in enumerate(funds):
+        if i > 0:
+            ratio = item / funds[i-1]
+            fraction = Fraction(ratio).limit_denominator(100)
+            print(fraction)
     mult = np.expand_dims(mult, 1)
     out = mult * modes
     return out
+
+out = make_mode_sequence(alpha=2)
