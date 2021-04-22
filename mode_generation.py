@@ -84,9 +84,47 @@ def get_weight(mode, choices, alpha, last_mode=None):
         weight = lm_weighting[0] * last_mode_weight + lm_weighting[1] * weight
     return weight
 
-def build_mode(degrees, lower_lim, upper_lim, alpha, last_mode=None):
-    lm_weighting = [1/3, 2/3] # means harmonic distance weighting based on last
-    # mode is worth 1/3, while hd weighting from current mode is worth 2/3
+def build_mode(alpha, last_mode=None, lm_weighting=[1/3, 2/3]):
+    # lm_weighting of [1/3, 2/3] means harmonic distance weighting based on last
+    # mode is worth 1/3, while hd weighting from current mode is worth 2/3.
+
+    _3rds = [7/6, 75/64, 6/5, 11/9, 5/4, 9/7] #1.17, 1.29
+    _5ths = [7/5, 45/32, 3/2, 25/16] #1.4, 1.56
+    _7ths = [7/4, 9/5, 11/6, 15/8] #1.75, 1.875
+    _9ths = [21/20, 135/128, 77/72, 16/15, 15/14, 35/32, 12/11, 9/8, 75/64, 7/6]#1.05, 1.17
+    _11ths = [21/16, 11/8, 45/32, 7/5]#1.31, 1.4
+    _13ths = [77/48, 8/5, 105/64, 18/11, 5/3, 27/16, 55/32, 12/7]#1.6, 1.71
+
+    _3_adds = [16/13, 39/32, 13/11]
+    _5_adds = [20/13, 91/64, 128/91, 13/9]
+    _7_adds = [13/7, 256/143, 117/64]
+    _9_adds = [14/13, 143/128, 128/117]
+    _11_adds = [13/10, 18/13]
+    _13_adds = [13/8, 64/39, 22/13]
+
+    degrees = {
+        '3rds': _3rds,
+        '5ths': _5ths,
+        '7ths': _7ths,
+        '9ths': _9ths,
+        '11ths': _11ths,
+        '13ths': _13ths
+        }
+
+    with_13 = False
+    if with_13:
+        degrees['3rds'] += _3_adds
+        degrees['5ths'] += _5_adds
+        degrees['7ths'] += _7_adds
+        degrees['9ths'] += _9_adds
+        degrees['11ths'] += _11_adds
+        degrees['13ths'] += _13_adds
+
+    lower_lim = [7/6, 9/7]
+    upper_lim = [9/8, 4/3]
+
+
+
 
     mode = [1]
     # third
@@ -156,7 +194,23 @@ def bass_motion(mode, alpha=4):
     bass_motion = np.random.choice(ratios, p=weight)
     return bass_motion
 
-
+def insert_mode(preceding_mode, next_mode, after_next_mode, alpha=4):
+    primes = np.array((3, 5, 7), dtype=float)
+    frac = Fraction(next_mode[0] / preceding_mode[0]).limit_denominator(100)
+    choice_indexes = np.where(frac.denominator != primes)[0]
+    next_frac = Fraction(after_next_mode[0] / next_mode[0]).limit_denominator(100)
+    nf_index = np.where(next_frac.denominator == primes)[0][0]
+    choice_indexes = choice_indexes[np.where(choice_indexes != nf_index)[0]]
+    ci = np.random.choice(choice_indexes)
+    choices = np.eye(len(primes))
+    choice = np.product(primes ** choices[ci])
+    while choice > 2:
+        choice /= 2
+    insert_bass = choice * next_mode[0]
+    side_arm = Fraction(preceding_mode[0] / insert_bass).limit_denominator(100)
+    target_pitches = np.concatenate((preceding_mode, next_mode)) / side_arm
+    mode = build_mode(alpha, target_pitches, [0.5, 0.5])
+    return mode * side_arm * preceding_mode[0]
 
 
 def make_mode_sequence(size_lims=(6, 30), alpha=4):
@@ -198,10 +252,10 @@ def make_mode_sequence(size_lims=(6, 30), alpha=4):
 
     len_inds = 0
     while len_inds < 1:
-        modes = [build_mode(degrees, lower_lim, upper_lim, alpha)]
+        modes = [build_mode(alpha)]
         for i in range(50):
             bm = bass_motion(modes[-1])
-            mode = build_mode(degrees, lower_lim, upper_lim, alpha, modes[-1]/bm)
+            mode = build_mode(alpha, modes[-1]/bm)
             mode = mode * bm * modes[-1][0]
             while mode[0] >=2:
                 mode /= 2
@@ -219,17 +273,55 @@ def make_mode_sequence(size_lims=(6, 30), alpha=4):
     funds = [i[0] for i in modes][:inds[0]+1]
     off = funds[-1]
     if off > 1.5: off /= 2
-    base = math.e ** (math.log(1/off) / (len(funds) - 1))
-    mult = base ** np.arange(inds[0])
+    # base = math.e ** (math.log(1/off) / (2 * (len(funds) - 1)))
+    # mult = base ** np.arange(2 * inds[0])
     modes = np.array(modes[:inds[0]])
-    print(len(modes), off)
-    for i, item in enumerate(funds):
-        if i > 0:
-            ratio = item / funds[i-1]
-            fraction = Fraction(ratio).limit_denominator(100)
-            print(fraction)
-    mult = np.expand_dims(mult, 1)
-    out = mult * modes
-    return out
 
-out = make_mode_sequence(alpha=2)
+    #find a mode between each
+    second_layer_modes = []
+    for i in range(len(modes)-1):
+        if (i+2) % len(modes) == 0:
+            after_next_mode = modes[0] * off
+        else:
+            after_next_mode = modes[i+2]
+        insert = insert_mode(modes[i], modes[i+1], after_next_mode)
+        second_layer_modes.append(insert)
+
+    base = math.e ** (math.log(1/off) / (2 * (len(funds) - 1)))
+    mult = base ** np.arange(2 * inds[0])
+    # print(2 * np.arange(int(len(mult)/2)))
+    even_mult = mult[2 * np.arange(int(len(mult)/2))]
+
+    odd_mult = mult[1 + 2 * np.arange(int(len(mult)/2)-1)]
+    even_mult = np.expand_dims(even_mult, 1)
+    odd_mult = np.expand_dims(odd_mult, 1)
+    # print(len(modes), off)
+    # for i, item in enumerate(funds):
+    #     if i > 0:
+    #         ratio = item / funds[i-1]
+    #         fraction = Fraction(ratio).limit_denominator(100)
+    #         print(fraction)
+
+    # TODO: come back and fix mode squeezer/stretcher
+
+    # mult = np.expand_dims(mult, 1)
+    # out = mult * modes
+    out_modes = np.array(modes) * even_mult
+    out_2nd_layer = np.array(second_layer_modes) * odd_mult
+
+    return out_modes, out_2nd_layer
+
+modes, second_layer = make_mode_sequence(alpha=2)
+
+json.dump(modes, open('test_modes.JSON', 'w'), cls=h_tools.NpEncoder)
+json.dump(second_layer, open('test_2nd_layer.JSON', 'w'), cls=h_tools.NpEncoder)
+
+for i in range(len(second_layer)):
+    real_ratio = second_layer[i][0] / modes[i][0]
+    frac = Fraction(real_ratio).limit_denominator(20)
+    print(frac, np.round(frac - real_ratio, 4))
+# print(modes)
+# print()
+# print(second_layer)
+# for i in range(len(second_layer)):
+#     print(Fraction(second_layer[i][0]/modes[i][0]).limit_denominator(100))
