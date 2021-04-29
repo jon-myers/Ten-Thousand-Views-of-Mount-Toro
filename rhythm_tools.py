@@ -27,10 +27,12 @@ def rhythmic_sequence_maker(num_of_thoughts, nCVI_average, factor=2.0, start_tim
             next_section_durs = np.append(section_durs, [factor ** np.random.normal()])
         section_durs = next_section_durs
     section_durs /= np.sum(section_durs)
-    if start_times:
-        cumsum = np.cumsum(section_durs)[:-1]
-        start_times = np.insert(cumsum, 0, 0)
-        return start_times
+    cumsum = np.cumsum(section_durs)[:-1]
+    starts = np.insert(cumsum, 0, 0)
+    if start_times == 'both':
+        return section_durs, starts
+    elif start_times:
+        return starts
     else: 
         return section_durs
 
@@ -85,31 +87,28 @@ def teehi_specifier(dur_tot, sequence, size, start_time=0, nCVI=10, repeats=3,
 
 
 
-
+def sequence_from_sample(samples, bounds):
+    
+    """ example usage:
+        sample_a = np.random.uniform(size=150)
+        sample_a = np.append(sample_a, np.random.uniform(0, 0.01, size=100))
+        sample_b = np.random.uniform(size=150)
+        sample_c = np.random.uniform(size=150)
+        samples = (sample_a, sample_b, sample_c)
+        bounds = [(0, 0.5), (0.5, 1)]
+        seq = sequence_from_sample(samples, bounds)
+    """
+    A, B, C = samples
+    seq = []
+    for bound in bounds:
+        a_bool = np.all((A >= bound[0], A < bound[1]), axis=0)
+        a_count = np.count_nonzero(a_bool)
+        b_bool = np.all((B >= bound[0], B < bound[1]), axis=0)
+        b_count = np.count_nonzero(b_bool)
+        c_bool = np.all((C >= bound[0], C < bound[1]), axis=0)
+        c_count = np.count_nonzero(c_bool)
+        maxs = np.argmax((a_count, b_count, c_count), axis=0)
+        seq.append(maxs)
+    return seq
 
 #
-# dur = 60 * 2
-# num_of_sections = 13
-# avg_td = 2
-# avg_ncvi = 8
-# durs = dur * rhythmic_sequence_maker(num_of_sections, 10)
-# starts = [sum(durs[:i]) for i in range(len(durs))]
-# tds = rhythmic_sequence_maker(num_of_sections, 10) * avg_td * num_of_sections
-# ncvis = rhythmic_sequence_maker(num_of_sections, 10) * num_of_sections * avg_ncvi
-#
-# all_events = []
-# for s in range(num_of_sections):
-#     num_of_attacks = int(tds[s] * durs[s] // 1)
-#     event_durs = rhythmic_sequence_maker(num_of_attacks, ncvis[s]) * durs[s]
-#     event_starts = [sum(event_durs[:i]) + starts[s] for i in range(len(event_durs))]
-#     all_events += list(event_starts)
-# all_durs = [all_events[i+1] - all_events[i] for i in range(len(all_events) - 1)]
-# all_durs.append(dur - all_events[-1])
-# notes = [[60, all_events[i], all_durs[i], 85] for i in range(len(all_durs))]
-# for note in notes:
-#     print(note)
-# easy_midi_generator(notes, 'test_midi.MIDI', 'Acoustic Grand Piano')
-
-
-# for one cycle, single drum, 13 modes long, each has a different temporal density
-# and different

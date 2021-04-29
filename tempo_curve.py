@@ -4,6 +4,7 @@ from scipy.special import gammainc as gamma
 from scipy.optimize import fsolve
 import math
 from rhythm_tools import rhythmic_sequence_maker as rsm
+from rhythm_tools import sequence_from_sample
 import numpy as np
 
 
@@ -96,11 +97,92 @@ class Time:
         number of cycles that have elapsed."""
         time = self.time_from_real_time(real_time)
         return self.cycles_from_time(time)
-
     
-# t = Time(f=0.3, noc=12)
+    def set_cycle(self, nos, nCVI=7):
+        """Allows you to assign a set of numbers between 0 and 1, the start 
+        times of the sections within a cycle. Probably generated from `rhythmic 
+        sequence maker`, with `start_times` set to True. """
+        self.cycle_durs, self.cycle_starts = rsm(nos, nCVI, start_times='both')
+        min_dur = 5
+        max_subdivs = 5
+        self.event_dur_dict = {}
+        self.event_map = {}
+        for c in range(self.noc):
+            self.event_map[c] = {}
+        for i in range(nos):
+            # Set the subdivisional pattern for various different subdivs
+            
+            sample_a = np.random.uniform(size=150)
+            sample_a = np.append(sample_a, np.random.uniform(0, 0.01, size=100))
+            sample_b = np.random.uniform(size=150)
+            sample_c = np.random.uniform(size=150)
+            samples = (sample_a, sample_b, sample_c)
+            
+            self.event_dur_dict[i] = {}
+            for j in range(1, max_subdivs + 1):
+                if j == 1:
+                    starts = [0]
+                    bounds = [(0, 1)]
+                else:
+                    starts = rsm(j, nCVI, start_times=True)
+                    ends = np.append(starts[1:], 1)
+                    bounds = [(starts[i], ends[i]) for i in range(len(starts))]
+                
+                seq = sequence_from_sample(samples, bounds)
+                self.event_dur_dict[i][j] = {'starts': starts, 'sequence': seq}
+        
+            for j in range(self.noc):
+                dur = self.real_time_dur_from_cycle_event(j, i)
+                subdivs = np.floor(dur / min_dur)
+                if subdivs == 0:
+                    subdivs = 1
+                if subdivs > max_subdivs:
+                    subdivs = max_subdivs
+                starts = self.event_dur_dict[i][subdivs]['starts']
+                seq = self.event_dur_dict[i][subdivs]['sequence']
+                for k in range(len(starts)):
+                    ct_start = self.cycle_starts[i] + (self.cycle_durs[i] * starts[k])
+                    self.event_map[j][ct_start] = {'mode': i, 'variation': seq[k]}
+            
+            
+            # 
+            
+            
+            
+            # for cycle in range(self.noc):
+            #     dur = self.real_time_dur_from_cycle_event(cycle, i)
+            #     subdivs = np.floor(dur / min_dur)
+            #     if subdivs == 0:
+            #         suvdivs = 1
+            #     if subdivs > max_subdivs:
+            #         subiivs = max_subdivs
+            #         starts = rsm(subdivs)
+            # event_dur_dict[i] = 
+        
+    def real_time_dur_from_cycle_event(self, cycle_num, event_num):
+        start = self.cycle_starts[event_num] + cycle_num
+        if event_num+1 == len(self.cycle_starts):
+            end = 1 + cycle_num
+        else:
+            end = self.cycle_starts[event_num+1] + cycle_num
+        rt_start = self.real_time_from_cycles(start)
+        rt_end = self.real_time_from_cycles(end)
+        dur = rt_end - rt_start
+        return dur 
+# test_cycle = rsm(10, 10, start_times=True)
+# print(test_cycle)
 
-# out = t.real_time_from_cycles(0.035)
+# t = Time(f=0.3, noc=9)
+# t.set_cycle(7)
+# print(t.event_map[8])
+# for i in range(10):
+#     print(t.real_time_dur_from_cycle_event(i, 2))
+# print()
+# for i in range(6):
+#     print(t.real_time_dur_from_cycle_event(8, i))
+
+# real_times = [t.real_time_from_cycles(i) for i in test_cycle]
+# print(real_times)
 # out = t.time_from_beat(0.041)
 # # print(t.end)
 # # print(t.end_beats)

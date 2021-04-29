@@ -1,41 +1,51 @@
 import numpy as np
 import matplotlib.pyplot as plt
-np.set_printoptions(suppress=True)
-def iterate(x):
-    return (1.21 * x) % 1
-
-
-# seed = np.random.rand()
-#
-# samples = [seed]
-# for i in range(10000):
-#     samples.append(iterate(samples[-1]))
-#
-#
-#
-# A = np.random.normal(size=10000)
-# A_cumulative = np.cumsum(A)
-#
-# B = np.random.normal(size=10000)
-# B_cumulative = np.cumsum(B)
-# C = np.arctan2(B_cumulative, A_cumulative)
-# print(C)
-
-
-# to generate rhythms, for a given (fixed) gamut, you need a distribution of
-# chord sizes, a distribution of eahc element, nCVI, temporal density.
-
-#basically, for an
-def weights_from_samples(sample, bins):
-    weight = np.histogram(sample, bins=bins, range=(0, 1), density=True)[0]
-    weight = weight / np.sum(weight)
-    return weight
-
-A = np.random.uniform(size=29)
-C = weights_from_samples(A, 5)
-D = weights_from_samples(A, 6)
-print(C)
+from rhythm_tools import rhythmic_sequence_maker as rsm
 
 
 
-class 
+
+
+def sequence_from_sample(samples, bounds):
+    A, B, C = samples
+    seq = []
+    for bound in bounds:
+        a_bool = np.all((A >= bound[0], A < bound[1]), axis=0)
+        a_count = np.count_nonzero(a_bool)
+        b_bool = np.all((B >= bound[0], B < bound[1]), axis=0)
+        b_count = np.count_nonzero(b_bool)
+        c_bool = np.all((C >= bound[0], C < bound[1]), axis=0)
+        c_count = np.count_nonzero(c_bool)
+        maxs = np.argmax((a_count, b_count, c_count), axis=0)
+        seq.append(maxs)
+    return seq
+    
+starts = rsm(4, 8, start_times=True)
+starts = np.append(starts, 1)
+bounds = [(starts[i], starts[i+1]) for i in range(len(starts)-1)]
+
+
+sample_a = np.random.uniform(size=150)
+sample_a = np.append(sample_a, np.random.uniform(0, 0.01, size=100))
+sample_b = np.random.uniform(size=150)
+sample_c = np.random.uniform(size=150)
+samples = (sample_a, sample_b, sample_c)
+
+# seq = sequence_from_sample(samples, bounds)
+# print(seq)
+
+bounds = [(0, 0.5), (0.5, 1)]
+seq = sequence_from_sample(samples, bounds)
+print(seq)
+
+bounds = [(0, 1/3), (1/3, 2/3), (2/3, 1)]
+seq = sequence_from_sample(samples, bounds)
+print(seq)
+
+bounds = [(0, 0.25), (0.25, 0.50), (0.5, 0.75), (0.75, 1)]
+seq = sequence_from_sample(samples, bounds)
+print(seq)
+
+bounds = [(0, 0.2), (0.2, 0.40), (0.4, 0.6), (0.6, 0.8), (0.8, 1)]
+seq = sequence_from_sample(samples, bounds)
+print(seq)

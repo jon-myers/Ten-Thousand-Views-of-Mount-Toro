@@ -212,6 +212,37 @@ def insert_mode(preceding_mode, next_mode, after_next_mode, alpha=4):
     mode = build_mode(alpha, target_pitches, [0.5, 0.5])
     return mode * side_arm * preceding_mode[0]
 
+def get_alt_modes(preceding_mode, next_mode, alpha=4):
+    """Given a preceding mode and a next mode, finds two 'alt' modes, whose root
+    is contained by the next mode, and whose pitches are (stochastically) as 
+    near as possible in HD to both preceding and next mode. These can be 
+    inserted in between the two modes as things slow down."""
+    primes = np.array((3, 5, 7), dtype=float)
+    frac = Fraction(next_mode[0] / preceding_mode[0]).limit_denominator(100)
+    alt_indexes = np.where(frac.denominator != primes)[0]
+    choices = np.eye(len(primes))
+    alt_root_0 = np.product(primes ** choices[alt_indexes[0]]) 
+    while alt_root_0 > 2:
+        alt_root_0 /= 2
+    alt_root_0 *= next_mode[0]
+    
+    alt_root_1 = np.product(primes ** choices[alt_indexes[1]]) 
+    while alt_root_1 > 2:
+        alt_root_1 /= 2
+    alt_root_1 *= next_mode[0]
+    side_ratio_0 = Fraction(preceding_mode[0] / alt_root_0).limit_denominator(50)
+    side_ratio_1 = Fraction(preceding_mode[0] / alt_root_1).limit_denominator(50)
+    target_0 = np.concatenate((preceding_mode, next_mode)) / side_ratio_0
+    target_1 = np.concatenate((preceding_mode, next_mode)) / side_ratio_1
+    alt_mode_0 = build_mode(alpha, target_0, [0.5, 0.5])
+    alt_mode_1 = build_mode(alpha, target_1, [0.5, 0.5])
+    alt_mode_0 = alt_mode_0 * side_ratio_0 * preceding_mode[0]
+    alt_mode_1 = alt_mode_1 * side_ratio_1 * preceding_mode[1]
+    return (alt_mode_0, alt_mode_1)
+    
+    
+    
+    
 
 def make_mode_sequence(size_lims=(6, 30), alpha=4):
 
@@ -276,25 +307,44 @@ def make_mode_sequence(size_lims=(6, 30), alpha=4):
     # base = math.e ** (math.log(1/off) / (2 * (len(funds) - 1)))
     # mult = base ** np.arange(2 * inds[0])
     modes = np.array(modes[:inds[0]])
+    
 
-    #find a mode between each
-    second_layer_modes = []
-    for i in range(len(modes)-1):
-        if (i+2) % len(modes) == 0:
-            after_next_mode = modes[0] * off
+
+
+    # find two alt modes for between each mode
+    alt_modes = []
+    for i in range(len(modes)):
+        if (i+1) % len(modes) == 0:
+            next_mode = modes[0] * off
         else:
-            after_next_mode = modes[i+2]
-        insert = insert_mode(modes[i], modes[i+1], after_next_mode)
-        second_layer_modes.append(insert)
+            next_mode = modes[i+1]
+        alts = get_alt_modes(modes[i], next_mode)
+        alt_modes.append(alts)
+        
+    base = math.e ** (math.log(1/off) / (len(funds)-1))
+    mult = base ** np.arange(len(funds)-1)
+    mult = np.expand_dims(mult, 1)
+    modes = np.array(modes) * mult
+    alt_modes = [(alt[0]*mult[i], alt[1]*mult[i]) for i, alt in enumerate(alt_modes)]
+    return modes, alt_modes
+    #find a mode between each
+    # second_layer_modes = []
+    # for i in range(len(modes)-1):
+    #     if (i+2) % len(modes) == 0:
+    #         after_next_mode = modes[0] * off
+    #     else:
+    #         after_next_mode = modes[i+2]
+    #     insert = insert_mode(modes[i], modes[i+1], after_next_mode)
+    #     second_layer_modes.append(insert)
 
-    base = math.e ** (math.log(1/off) / (2 * (len(funds) - 1)))
-    mult = base ** np.arange(2 * inds[0])
-    # print(2 * np.arange(int(len(mult)/2)))
-    even_mult = mult[2 * np.arange(int(len(mult)/2))]
-
-    odd_mult = mult[1 + 2 * np.arange(int(len(mult)/2)-1)]
-    even_mult = np.expand_dims(even_mult, 1)
-    odd_mult = np.expand_dims(odd_mult, 1)
+    # base = math.e ** (math.log(1/off) / (2 * (len(funds) - 1)))
+    # mult = base ** np.arange(2 * inds[0])
+    # # print(2 * np.arange(int(len(mult)/2)))
+    # even_mult = mult[2 * np.arange(int(len(mult)/2))]
+    # 
+    # odd_mult = mult[1 + 2 * np.arange(int(len(mult)/2)-1)]
+    # even_mult = np.expand_dims(even_mult, 1)
+    # odd_mult = np.expand_dims(odd_mult, 1)
     # print(len(modes), off)
     # for i, item in enumerate(funds):
     #     if i > 0:
@@ -306,20 +356,28 @@ def make_mode_sequence(size_lims=(6, 30), alpha=4):
 
     # mult = np.expand_dims(mult, 1)
     # out = mult * modes
-    out_modes = np.array(modes) * even_mult
-    out_2nd_layer = np.array(second_layer_modes) * odd_mult
+    # out_modes = np.array(modes) * even_mult
+    # out_2nd_layer = np.array(second_layer_modes) * odd_mult
+    # 
+    # return out_modes, out_2nd_layer
 
-    return out_modes, out_2nd_layer
+modes, alt_modes = make_mode_sequence(alpha=2)
 
-modes, second_layer = make_mode_sequence(alpha=2)
+# print(modes)
+# print()
+# print(alt_modes[0])
 
+alt_modes_0 = np.array([i[0] for i in alt_modes])
+alt_modes_1 = np.array([i[1] for i in alt_modes])
 json.dump(modes, open('test_modes.JSON', 'w'), cls=h_tools.NpEncoder)
-json.dump(second_layer, open('test_2nd_layer.JSON', 'w'), cls=h_tools.NpEncoder)
+json.dump(alt_modes_0, open('alt_modes_0.JSON', 'w'), cls=h_tools.NpEncoder)
+json.dump(alt_modes_1, open('alt_modes_1.JSON', 'w'), cls=h_tools.NpEncoder)
 
-for i in range(len(second_layer)):
-    real_ratio = second_layer[i][0] / modes[i][0]
-    frac = Fraction(real_ratio).limit_denominator(20)
-    print(frac, np.round(frac - real_ratio, 4))
+# 
+# for i in range(len(second_layer)):
+#     real_ratio = second_layer[i][0] / modes[i][0]
+#     frac = Fraction(real_ratio).limit_denominator(20)
+#     print(frac, np.round(frac - real_ratio, 4))
 # print(modes)
 # print()
 # print(second_layer)
