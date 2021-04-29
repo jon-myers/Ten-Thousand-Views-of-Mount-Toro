@@ -8,7 +8,7 @@ from rhythm_tools import sequence_from_sample
 import numpy as np
 
 
-# the time variable refers to the initial time frame. To refer to the actual 
+# the time variable refers to the initial time frame. To refer to the actual
 # time in the final piece, as stretched to end at dur_tot, I will use `real_time`
 class Time:
     """Creates a time object, for a looping cycle (or buffer) with a
@@ -24,7 +24,7 @@ class Time:
         self.end_beats = self.b(self.end_time)
         self.norm_factor = self.dur_tot / self.end_time
         self.noc = noc #number of cycles
-        
+
     def mm(self, time):
         """Instantaneous tempo at a given time measured from begining of the
         piece."""
@@ -57,50 +57,50 @@ class Time:
         """Returns the time when a given number of beats have elapsed."""
         if beat == 0:
             return 0
-        else:    
+        else:
             return fsolve(lambda x: self.b(x) - beat, 0.01)[0]
-        
+
     def cycles_from_beats(self, beat):
         """Converts a given location in beats to the location in cycles."""
         return beat * self.noc / self.end_beats
-        
+
     def beats_from_cycles(self, cycles):
         """Converts a given location in cycles to the location in beats."""
         return cycles * self.end_beats / self.noc
-    
+
     def cycles_from_time(self, time):
         """Converts a given location in time to the location in cycles."""
         return self.cycles_from_beats(self.b(time))
-    
+
     def real_time_from_time(self, time):
         """Converts from time to literal time of the piece as realized."""
         return time * self.norm_factor
-        
+
     def time_from_real_time(self, real_time):
         """Converts from literal time of the piece as realized to abstract time.
         """
         return real_time / self.norm_factor
-        
+
     def real_time_from_beats(self, beats):
         """Converts from beats to literal time of the piece as realized."""
         time = self.time_from_beat(beats)
         return self.real_time_from_time(time)
-    
+
     def real_time_from_cycles(self, cycles):
-        """Converst a given location in cycles to literal time of the piece as 
+        """Converts a given location in cycles to literal time of the piece as
         realized"""
         beats = self.beats_from_cycles(cycles)
         return self.real_time_from_beats(beats)
-        
+
     def cycles_from_real_time(self, real_time):
-        """Given a real moment in the time of the realized piece, returns the 
+        """Given a real moment in the time of the realized piece, returns the
         number of cycles that have elapsed."""
         time = self.time_from_real_time(real_time)
         return self.cycles_from_time(time)
-    
+
     def set_cycle(self, nos, nCVI=7):
-        """Allows you to assign a set of numbers between 0 and 1, the start 
-        times of the sections within a cycle. Probably generated from `rhythmic 
+        """Allows you to assign a set of numbers between 0 and 1, the start
+        times of the sections within a cycle. Probably generated from `rhythmic
         sequence maker`, with `start_times` set to True. """
         self.cycle_durs, self.cycle_starts = rsm(nos, nCVI, start_times='both')
         min_dur = 5
@@ -111,13 +111,13 @@ class Time:
             self.event_map[c] = {}
         for i in range(nos):
             # Set the subdivisional pattern for various different subdivs
-            
+
             sample_a = np.random.uniform(size=150)
             sample_a = np.append(sample_a, np.random.uniform(0, 0.01, size=100))
             sample_b = np.random.uniform(size=150)
             sample_c = np.random.uniform(size=150)
             samples = (sample_a, sample_b, sample_c)
-            
+
             self.event_dur_dict[i] = {}
             for j in range(1, max_subdivs + 1):
                 if j == 1:
@@ -127,10 +127,10 @@ class Time:
                     starts = rsm(j, nCVI, start_times=True)
                     ends = np.append(starts[1:], 1)
                     bounds = [(starts[i], ends[i]) for i in range(len(starts))]
-                
+
                 seq = sequence_from_sample(samples, bounds)
                 self.event_dur_dict[i][j] = {'starts': starts, 'sequence': seq}
-        
+
             for j in range(self.noc):
                 dur = self.real_time_dur_from_cycle_event(j, i)
                 subdivs = np.floor(dur / min_dur)
@@ -143,12 +143,17 @@ class Time:
                 for k in range(len(starts)):
                     ct_start = self.cycle_starts[i] + (self.cycle_durs[i] * starts[k])
                     self.event_map[j][ct_start] = {'mode': i, 'variation': seq[k]}
-            
-            
-            # 
-            
-            
-            
+        self.real_time_event_map = {}
+        for cycle in self.event_map.keys():
+            for event in self.event_map[cycle].keys():
+                real_time = self.real_time_from_cycles(cycle+event)
+                self.real_time_event_map[real_time] = self.event_map[cycle][event]
+
+
+            #
+
+
+
             # for cycle in range(self.noc):
             #     dur = self.real_time_dur_from_cycle_event(cycle, i)
             #     subdivs = np.floor(dur / min_dur)
@@ -157,8 +162,8 @@ class Time:
             #     if subdivs > max_subdivs:
             #         subiivs = max_subdivs
             #         starts = rsm(subdivs)
-            # event_dur_dict[i] = 
-        
+            # event_dur_dict[i] =
+
     def real_time_dur_from_cycle_event(self, cycle_num, event_num):
         start = self.cycle_starts[event_num] + cycle_num
         if event_num+1 == len(self.cycle_starts):
@@ -168,7 +173,7 @@ class Time:
         rt_start = self.real_time_from_cycles(start)
         rt_end = self.real_time_from_cycles(end)
         dur = rt_end - rt_start
-        return dur 
+        return dur
 # test_cycle = rsm(10, 10, start_times=True)
 # print(test_cycle)
 
@@ -190,7 +195,7 @@ class Time:
 # cycle_durs = rsm(20, 10)
 # cumsum = np.cumsum(cycle_durs)[:-1]
 # cycle_events = np.insert(cumsum, 0, 0)
-# 
+#
 # real_times = [t.real_time_from_cycles(i) for i in cycle_events]
 # print(real_times)
 # print(cycle_events)
