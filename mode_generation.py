@@ -361,19 +361,14 @@ def make_mode_sequence(size_lims=(6, 30), alpha=4):
     # 
     # return out_modes, out_2nd_layer
 
-modes, alt_modes = make_mode_sequence(alpha=2)
-
-# print(modes)
-# print()
-# print(alt_modes[0])
-
-alt_modes_0 = np.array([i[0] for i in alt_modes])
-alt_modes_1 = np.array([i[1] for i in alt_modes])
-json.dump(modes, open('test_modes.JSON', 'w'), cls=h_tools.NpEncoder)
-json.dump(alt_modes_0, open('alt_modes_0.JSON', 'w'), cls=h_tools.NpEncoder)
-json.dump(alt_modes_1, open('alt_modes_1.JSON', 'w'), cls=h_tools.NpEncoder)
-
+# modes, alt_modes = make_mode_sequence(alpha=2)
+# alt_modes_0 = np.array([i[0] for i in alt_modes])
+# alt_modes_1 = np.array([i[1] for i in alt_modes])
+# json.dump([modes, alt_modes_0, alt_modes_1, open('modes_and_variations.JSON', 'w'), cls=h_tools.NpEncoder)
+# json.dump(alt_modes_0, open('alt_modes_0.JSON', 'w'), cls=h_tools.NpEncoder)
+# json.dump(alt_modes_1, open('alt_modes_1.JSON', 'w'), cls=h_tools.NpEncoder)
 # 
+# # 
 # for i in range(len(second_layer)):
 #     real_ratio = second_layer[i][0] / modes[i][0]
 #     frac = Fraction(real_ratio).limit_denominator(20)
