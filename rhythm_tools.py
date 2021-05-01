@@ -15,7 +15,7 @@ def nCVI(d):
 
 
 def rhythmic_sequence_maker(num_of_thoughts, nCVI_average, factor=2.0, start_times=False):
-    
+
     section_durs = factor ** np.random.normal(size=2)
     while abs(nCVI(section_durs) - nCVI_average) > 1.0:
         section_durs = factor ** np.random.normal(size=2)
@@ -33,7 +33,7 @@ def rhythmic_sequence_maker(num_of_thoughts, nCVI_average, factor=2.0, start_tim
         return section_durs, starts
     elif start_times:
         return starts
-    else: 
+    else:
         return section_durs
 
 
@@ -88,7 +88,7 @@ def teehi_specifier(dur_tot, sequence, size, start_time=0, nCVI=10, repeats=3,
 
 
 def sequence_from_sample(samples, bounds):
-    
+
     """ example usage:
         sample_a = np.random.uniform(size=150)
         sample_a = np.append(sample_a, np.random.uniform(0, 0.01, size=100))
@@ -111,4 +111,18 @@ def sequence_from_sample(samples, bounds):
         seq.append(maxs)
     return seq
 
-#
+
+def spread(init, max_ratio):
+    exponent = np.clip(np.random.normal() / 3, -1, 1)
+    return init * (max_ratio ** exponent)
+
+def normalize(array):
+    array = np.array(array)
+    return array / sum(array)
+
+def jiggle_sequence(sequence, spd):
+    return normalize(np.array([spread(i, spd) for i in sequence]))
+
+# test = [0.2, 0.2, 0.2, 0.2, 0.2]
+# out = jiggle_sequence(test, 1.5)
+# print(out)
