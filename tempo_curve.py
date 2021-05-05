@@ -103,10 +103,11 @@ class Time:
         times of the sections within a cycle. Probably generated from `rhythmic
         sequence maker`, with `start_times` set to True. """
         self.cycle_durs, self.cycle_starts = rsm(nos, nCVI, start_times='both')
-        min_dur = 5
+        min_dur = 7
         max_subdivs = 5
         self.event_dur_dict = {}
         self.event_map = {}
+        self.subdivs = {}
         for c in range(self.noc):
             self.event_map[c] = {}
         for i in range(nos):
@@ -119,6 +120,7 @@ class Time:
             samples = (sample_a, sample_b, sample_c)
 
             self.event_dur_dict[i] = {}
+            self.subdivs[i] = {}
             for j in range(1, max_subdivs + 1):
                 if j == 1:
                     starts = [0]
@@ -129,8 +131,10 @@ class Time:
                     bounds = [(starts[i], ends[i]) for i in range(len(starts))]
 
                 seq = sequence_from_sample(samples, bounds)
-                self.event_dur_dict[i][j] = {'starts': starts, 'sequence': seq}
+                dict = {'starts': starts, 'sequence': seq}
+                self.event_dur_dict[i][j] = dict
 
+            
             for j in range(self.noc):
                 dur = self.real_time_dur_from_cycle_event(j, i)
                 subdivs = np.floor(dur / min_dur)
@@ -138,6 +142,7 @@ class Time:
                     subdivs = 1
                 if subdivs > max_subdivs:
                     subdivs = max_subdivs
+                self.subdivs[i][j] = subdivs
                 starts = self.event_dur_dict[i][subdivs]['starts']
                 seq = self.event_dur_dict[i][subdivs]['sequence']
                 for k in range(len(starts)):

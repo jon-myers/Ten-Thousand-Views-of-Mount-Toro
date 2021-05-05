@@ -30,21 +30,32 @@ class Thoughts_Texture:
     repetition_range: tuple (int, int), min and max possible reps per phrase
 
     """
-    def __init__(self, mode, fund, register, target_index, num_of_lines, repetition_range):
+    def __init__(self, mode, fund, register, target_index, num_of_lines, 
+            repetition_range, size_range):
         self.mode = np.sort(mode)
         self.fund = fund
         self.reg_min = register[0]
         self.reg_octs = register[1]
+        self.reg_max = self.reg_min * (2 ** self.reg_octs)
         self.target_index = target_index
         self.nol = num_of_lines
         self.rep_range = repetition_range
-        self.target_time = 0.9
-
+        self.size_range = size_range
+        self.target_time = 0.95
+        self.max_start_offset = 0.2
+        self.zero_freq = self.fund * self.mode[0]
+        while self.zero_freq < self.reg_min:
+            self.zero_freq *= 2
+        while self.zero_freq >= 2 * self.reg_min:
+            self.zero_freq /= 2
+        if self.min_pc_index() != 0:
+            self.zero_freq /= 2
+        self.make_phrases()
 
     def min_pc_index(self):
         freqs = self.fund * self.mode
-        while np.any(freqs > 2 * fund):
-            freqs = np.where(freqs > 2*fund, freqs / 2, freqs)
+        while np.any(freqs >= 2 * self.reg_min):
+            freqs = np.where(freqs >= 2*self.reg_min, freqs / 2, freqs)
         return np.argmin(freqs)
 
     def max_pc_index(self):
@@ -52,6 +63,11 @@ class Thoughts_Texture:
         while np.any(freqs > 2 * fund):
             freqs = np.where(freqs > 2 * fund, freqs / 2, freqs)
         return np.argmax(freqs)
+    
+    def pitch_to_freq(self, pitch_arr):
+        oct_shift = 2 ** np.floor(pitch_arr/len(self.mode))
+        out = self.mode[pitch_arr%len(self.mode)] * oct_shift * self.zero_freq
+        return out
 
     def make_phrase(self, size, reps, nCVI=7, alpha=2):
 
@@ -68,52 +84,68 @@ class Thoughts_Texture:
         # this normalization in the next line is not strictly necessary, fixes
         # (likly insignificant) sum errors, in ~ the 10th significant digit.
         aggregated_durs *= self.target_time / sum(aggregated_durs)
+        offset = np.random.uniform(0, self.max_start_offset)
+        aggregated_durs *= (self.target_time - offset) / self.target_time
+        starts = np.append(np.array((0)), np.cumsum(aggregated_durs)[:-1]) + offset
+        starts = np.append(starts, self.target_time)
+        starts = np.append((0), starts)
 
+        
         # melody
         # run a dc alg backwards, starting from target, then flip
         counts = np.zeros(len(self.mode), dtype=int) + 2
         counts[self.target_index] = 1
-        dc_seq = h_tools.dc_alg(len(self.mode), size, counts, alpha)
+        dc_seq = h_tools.dc_alg(len(self.mode), size-1, counts, alpha)
         seq = np.append([self.target_index], dc_seq)[::-1]
-        print(seq)
+        # print(seq)
         contour = Contour.nearest(seq)
         register = np.sum(contour)
         line = [0]
         for d in contour:
             line.append(line[-1] + d)
         line = np.array(line)
-        print(contour)
-        print(line)
+        # print(contour)
+        # print(line)
         line -= line[-1]
-        line += (self.target_index - self.min_pc_index()) % len(self.mode)
-        while np.any(line) < 0:
-            line += len(mode)
-        line_max = np.max(line)
-        min_oct = np.ceil(line_max / len(self.mode))
-        choice_oct = np.random.choice(np.arange(self.reg_octs-min_oct))
-        line = choice_oct * len(mode) + line
+        line += self.target_index
+        while np.min(line) < self.min_pc_index():
+            line += len(self.mode)
+            
+        lowest_freqs = self.pitch_to_freq(line)
+        possible_octs_above = 0
+        while np.max((2 ** (possible_octs_above)) * lowest_freqs) <= self.reg_max:
+            possible_octs_above += 1
+        octs_above = np.random.choice(np.arange(possible_octs_above))
+        freqs = lowest_freqs * (2 ** octs_above)
+        freqs = np.tile(freqs, reps)
+        freqs = np.append((0), freqs)
+        
+        # dynamics
+        dynamics = np.random.uniform(0.5, 1.0, size)
+        dynamics = np.tile(dynamics, reps)  
+        dynamics = np.append((0), dynamics)
+            
+        phrase = {'freqs': freqs, 'starts': starts, 'dynamics': dynamics}
+        return phrase
+        
+    def make_phrases(self):
+        all_sizes = np.random.randint(*self.size_range, self.nol)
+        all_reps = np.random.randint(*self.rep_range, self.nol)
+        all_nCVIs = np.random.uniform(2, 15, self.nol)
+        self.phrases = []
+        for i in range(self.nol):
+            phrase = self.make_phrase(all_sizes[i], all_reps[i], all_nCVIs[i])
+            self.phrases.append(phrase)
+        
         
 
-
-        print(line)
-        print(register)
-
-        print(-register + (self.target_index - self.min_pc_index()) % len(self.mode))
-
-
-
-        return
-
-mode = [1.25, 1.35, 1.45, 2.1, 1.6, 1.5, 1.4]
-fund = 200
-register = (150, 6)
-target_index = 1
-num_of_lines = 4
-repetition_range = (3, 8)
-t = Thoughts_Texture(mode, fund, register, target_index, num_of_lines,repetition_range)
-out = t.make_phrase(10, 3)
-# print(t.max_pc_index())
-# print(out)
-# print(sum(out))
-# arr = np.array([4, 6, 1, 5, 1])
-# Contour.nearest(arr)
+# mode = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6]
+# fund = 200
+# register = (60, 6)
+# target_index = 1
+# num_of_lines = 4
+# repetition_range = (3, 8)
+# size_range = (5, 15)
+# t = Thoughts_Texture(mode, fund, register, target_index, num_of_lines,
+#     repetition_range, size_range)
+# print(t.phrases)

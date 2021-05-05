@@ -25,6 +25,20 @@ o.device = "CA DacMagic 200M 2.0"
 ~alt_1 = ~alt_1.readAllString.parseYAML;
 ~alt_1 = Array.fill(~alt_1.size, {arg i; ~alt_1[i].asFloat});
 
+
+
+
+
+~modes_et_all = File.open("/Users/jon/Documents/2021/azure/JSON/modes_and_variations.JSON", "r");
+~modes_et_all = ~modes_et_all.readAllString.parseYAML;
+~modes_et_all = Array.fill(~modes_et_all.size, {arg i; ~modes_et_all[i].asFloat});
+
+~modes = ~modes_et_all[0]
+~alt_0 = ~modes_et_all[1]
+~alt_1 = ~modes_et_all[2]
+
+
+
 /*~layer2 = File.open("/Users/student/Documents/Myers/azure/test_2nd_layer.JSON", "r");
 ~layer2 = ~layer2.readAllString.parseYAML;
 ~layer2 = Array.fill(~layer2.size, {arg i; ~layer2[i].asFloat});*/
@@ -86,6 +100,20 @@ z = Array.fill(~freqs.size, {Pbrown(0.0, 1.0, 0.1, inf).asStream});
 }.fork;
 ));
 
+
+~note = PatternProxy(Pseq([300 * ~modes[1][0]], inf))
+~note.source = Pseq([300 * ~alt_0[3][3]], inf)
+~mel = Pbind(
+	\freq, ~note,
+	\dur, Prand([0.5, 0.35, 0.7], inf),
+	\amp, 0.75
+).play
+
+
+~mel.put(\amp, 0.5)
+~mel.play
+~mel.stop
+
 x.set(\freqs, ~registrate.value(~modes[0][..4], 3, 150))
 x.set(\freqs, ~registrate.value(2*~alt_0[0][..4], 3, 150))
 x.set(\freqs, ~registrate.value(2*~alt_1[0][..4], 3, 150))
@@ -100,7 +128,7 @@ x.set(\freqs, ~registrate.value(0.5*~alt_1[2][..4], 3, 150))
 
 x.set(\freqs, ~registrate.value(0.5*~modes[3][..4], 3, 150))
 x.set(\freqs, ~registrate.value(1*~alt_0[3][..4], 3, 150))
-x.set(\freqs, ~registrate.value(1*~alt_1[3][..4], 3, 150))
+x.set(\freqs, ~registrate.value(0.5*~alt_1[3][..4], 3, 150))
 
 
 ~layer2[3][0]*2 / ~modes[4][0]
