@@ -100,7 +100,7 @@ z = Array.fill(~freqs.size, {Pbrown(0.0, 1.0, 0.1, inf).asStream});
 }.fork;
 ));
 
-
+1!2
 ~note = PatternProxy(Pseq([300 * ~modes[1][0]], inf))
 ~note.source = Pseq([300 * ~alt_0[3][3]], inf)
 ~mel = Pbind(
