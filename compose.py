@@ -107,9 +107,9 @@ for c in range(noc):
         # t.event_dur_dict[section][subdiv] = 
         
         
-# variations_0 = np.array([i[0] for i in variations])
-# variations_1 = np.array([i[1] for i in variations])
-# json.dump([modes, variations_0, variations_1], open('JSON/modes_and_variations.JSON', 'w'), cls=h_tools.NpEncoder)
+variations_0 = np.array([i[0] for i in variations])
+variations_1 = np.array([i[1] for i in variations])
+json.dump([modes, variations_0, variations_1], open('JSON/modes_and_variations.JSON', 'w'), cls=h_tools.NpEncoder)
 # 
 
         

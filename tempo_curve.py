@@ -101,7 +101,7 @@ class Time:
     def set_cycle(self, nos, nCVI=7):
         """Allows you to assign a set of numbers between 0 and 1, the start
         times of the sections within a cycle. Probably generated from `rhythmic
-        sequence maker`, with `start_times` set to True. """
+        sequence maker`, with `start_times` set to True."""
         self.cycle_durs, self.cycle_starts = rsm(nos, nCVI, start_times='both')
         min_dur = 7
         max_subdivs = 5
