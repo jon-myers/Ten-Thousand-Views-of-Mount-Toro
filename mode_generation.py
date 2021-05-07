@@ -3,6 +3,7 @@ import numpy as np
 import json
 from fractions import Fraction
 import math
+import numpy_indexed as npi
 
 def get_aggregate_hd(mode, trial):
     hd = 0
@@ -214,19 +215,19 @@ def insert_mode(preceding_mode, next_mode, after_next_mode, alpha=4):
 
 def get_alt_modes(preceding_mode, next_mode, alpha=4):
     """Given a preceding mode and a next mode, finds two 'alt' modes, whose root
-    is contained by the next mode, and whose pitches are (stochastically) as 
-    near as possible in HD to both preceding and next mode. These can be 
+    is contained by the next mode, and whose pitches are (stochastically) as
+    near as possible in HD to both preceding and next mode. These can be
     inserted in between the two modes as things slow down."""
     primes = np.array((3, 5, 7), dtype=float)
     frac = Fraction(next_mode[0] / preceding_mode[0]).limit_denominator(100)
     alt_indexes = np.where(frac.denominator != primes)[0]
     choices = np.eye(len(primes))
-    alt_root_0 = np.product(primes ** choices[alt_indexes[0]]) 
+    alt_root_0 = np.product(primes ** choices[alt_indexes[0]])
     while alt_root_0 > 2:
         alt_root_0 /= 2
     alt_root_0 *= next_mode[0]
-    
-    alt_root_1 = np.product(primes ** choices[alt_indexes[1]]) 
+
+    alt_root_1 = np.product(primes ** choices[alt_indexes[1]])
     while alt_root_1 > 2:
         alt_root_1 /= 2
     alt_root_1 *= next_mode[0]
@@ -239,10 +240,10 @@ def get_alt_modes(preceding_mode, next_mode, alpha=4):
     alt_mode_0 = alt_mode_0 * side_ratio_0 * preceding_mode[0]
     alt_mode_1 = alt_mode_1 * side_ratio_1 * preceding_mode[1]
     return (alt_mode_0, alt_mode_1)
-    
-    
-    
-    
+
+
+
+
 
 def make_mode_sequence(size_lims=(6, 30), alpha=4):
 
@@ -307,7 +308,7 @@ def make_mode_sequence(size_lims=(6, 30), alpha=4):
     # base = math.e ** (math.log(1/off) / (2 * (len(funds) - 1)))
     # mult = base ** np.arange(2 * inds[0])
     modes = np.array(modes[:inds[0]])
-    
+
 
 
 
@@ -320,61 +321,43 @@ def make_mode_sequence(size_lims=(6, 30), alpha=4):
             next_mode = modes[i+1]
         alts = get_alt_modes(modes[i], next_mode)
         alt_modes.append(alts)
-        
+
     base = math.e ** (math.log(1/off) / (len(funds)-1))
     mult = base ** np.arange(len(funds)-1)
     mult = np.expand_dims(mult, 1)
     modes = np.array(modes) * mult
     alt_modes = [(alt[0]*mult[i], alt[1]*mult[i]) for i, alt in enumerate(alt_modes)]
     return modes, alt_modes
-    #find a mode between each
-    # second_layer_modes = []
-    # for i in range(len(modes)-1):
-    #     if (i+2) % len(modes) == 0:
-    #         after_next_mode = modes[0] * off
-    #     else:
-    #         after_next_mode = modes[i+2]
-    #     insert = insert_mode(modes[i], modes[i+1], after_next_mode)
-    #     second_layer_modes.append(insert)
 
-    # base = math.e ** (math.log(1/off) / (2 * (len(funds) - 1)))
-    # mult = base ** np.arange(2 * inds[0])
-    # # print(2 * np.arange(int(len(mult)/2)))
-    # even_mult = mult[2 * np.arange(int(len(mult)/2))]
-    # 
-    # odd_mult = mult[1 + 2 * np.arange(int(len(mult)/2)-1)]
-    # even_mult = np.expand_dims(even_mult, 1)
-    # odd_mult = np.expand_dims(odd_mult, 1)
-    # print(len(modes), off)
-    # for i, item in enumerate(funds):
-    #     if i > 0:
-    #         ratio = item / funds[i-1]
-    #         fraction = Fraction(ratio).limit_denominator(100)
-    #         print(fraction)
 
-    # TODO: come back and fix mode squeezer/stretcher
+def make_melody(modes, variations):
+    """Returns a target pitch that overlaps with mode variations."""
+    melody = []
+    for i in range(len(modes)):
+        A = h_tools.gen_ratios_to_hsv(modes[i]/modes[i][0], [3, 5, 7])
+        B = h_tools.gen_ratios_to_hsv(variations[i][0]/modes[i][0], [3, 5, 7])
+        C = h_tools.gen_ratios_to_hsv(variations[i][1]/modes[i][0], [3, 5, 7])
 
-    # mult = np.expand_dims(mult, 1)
-    # out = mult * modes
-    # out_modes = np.array(modes) * even_mult
-    # out_2nd_layer = np.array(second_layer_modes) * odd_mult
-    # 
-    # return out_modes, out_2nd_layer
-
-# modes, alt_modes = make_mode_sequence(alpha=2)
-# alt_modes_0 = np.array([i[0] for i in alt_modes])
-# alt_modes_1 = np.array([i[1] for i in alt_modes])
-# json.dump([modes, alt_modes_0, alt_modes_1, open('modes_and_variations.JSON', 'w'), cls=h_tools.NpEncoder)
-# json.dump(alt_modes_0, open('alt_modes_0.JSON', 'w'), cls=h_tools.NpEncoder)
-# json.dump(alt_modes_1, open('alt_modes_1.JSON', 'w'), cls=h_tools.NpEncoder)
-# 
-# # 
-# for i in range(len(second_layer)):
-#     real_ratio = second_layer[i][0] / modes[i][0]
-#     frac = Fraction(real_ratio).limit_denominator(20)
-#     print(frac, np.round(frac - real_ratio, 4))
-# print(modes)
-# print()
-# print(second_layer)
-# for i in range(len(second_layer)):
-#     print(Fraction(second_layer[i][0]/modes[i][0]).limit_denominator(100))
+        abc = npi.intersection(A, B, C)
+        ab = npi.intersection(A, B)
+        bc = npi.intersection(B, C)
+        ac = npi.intersection(A, C)
+        if len(abc) > 0:
+            melody_note = abc[np.random.choice(np.array(len(abc)))]
+            index = np.nonzero(np.all(np.equal(A, melody_note), axis=1))[0][0]
+            melody.append((0, index))
+        elif len(ab) > 0:
+            melody_note = ab[np.random.choice(np.array(len(ab)))]
+            index = np.nonzero(np.all(np.equal(A, melody_note), axis=1))[0][0]
+            melody.append((0, index))
+        elif len(ac) > 0:
+            melody_note = ac[np.random.choice(np.array(len(ac)))]
+            index = np.nonzero(np.all(np.equal(A, melody_note), axis=1))[0][0]
+            melody.append((0, index))
+        elif len(bc) > 0:
+            melody_note = bc[np.random.choice(np.array(len(bc)))]
+            index = np.nonzero(np.all(np.equal(B, melody_note), axis=1))[0][0]
+            melody.append((1, index))
+        else:
+            melody.append((0, 0))
+    return melody

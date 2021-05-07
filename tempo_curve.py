@@ -72,6 +72,12 @@ class Time:
         """Converts a given location in time to the location in cycles."""
         return self.cycles_from_beats(self.b(time))
 
+    def time_from_cycles(self, cycles):
+        """Converts a given location in cycles to the location in time."""
+        beats = self.beats_from_cycles(cycles)
+        time = self.time_from_beat(beats)
+        return time
+
     def real_time_from_time(self, time):
         """Converts from time to literal time of the piece as realized."""
         return time * self.norm_factor
@@ -92,6 +98,12 @@ class Time:
         beats = self.beats_from_cycles(cycles)
         return self.real_time_from_beats(beats)
 
+    def mm_from_cycles(self, cycles):
+        """Converts a given location in cycles to tempo at that moment."""
+        time = self.time_from_cycles(cycles)
+        mm = self.mm(time)
+        return mm
+
     def cycles_from_real_time(self, real_time):
         """Given a real moment in the time of the realized piece, returns the
         number of cycles that have elapsed."""
@@ -102,6 +114,7 @@ class Time:
         """Allows you to assign a set of numbers between 0 and 1, the start
         times of the sections within a cycle. Probably generated from `rhythmic
         sequence maker`, with `start_times` set to True."""
+        self.nos = nos
         self.cycle_durs, self.cycle_starts = rsm(nos, nCVI, start_times='both')
         min_dur = 7
         max_subdivs = 5
@@ -134,7 +147,7 @@ class Time:
                 dict = {'starts': starts, 'sequence': seq}
                 self.event_dur_dict[i][j] = dict
 
-            
+
             for j in range(self.noc):
                 dur = self.real_time_dur_from_cycle_event(j, i)
                 subdivs = np.floor(dur / min_dur)
