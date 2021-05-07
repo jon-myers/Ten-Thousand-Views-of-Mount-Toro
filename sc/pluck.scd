@@ -52,8 +52,7 @@
 };
 )
 
-~pluck = {|freq, coef, decay| Pluck.ar(Pulse.ar(freq) * 0.1, Impulse.ar(0), 1/freq, 1/freq, decay, coef)}
-Delay
+~pluck = {|freq, coef, decay| Pluck.ar(Pulse.ar(freq) * 0.1, Impulse.ar(0), 1/freq, 1/freq, decay, coef)};
 
 (
 SynthDef.new('pluck', {arg coef=0.1, decay=3;
@@ -77,30 +76,17 @@ a = Pbind(
 	\freqs, ~list,
 	\dur, Prand([0.29, 0.58, 0.45, 1, 1.2, 1.4], inf),
 	\coef, ~coef,
-	\decay, ~decay,
+	\decay, ~decay
 ).play);
 a.stop;
 
-~list = PatternProxy(Pseq(~generated_list[0], inf));
-~list.source = Pseq(~generated_list[0], inf);
+~list = PatternProxy(Pseq(~generated_list, inf));
+~list.source = Pseq(~generated_list[7], inf);
 ~generated_list.size
 ~coef = PatternProxy(0.1);
-~coef.source = 0.2;
+~coef.source = 0.3;
 ~decay = PatternProxy(3);
-~decay.source = 3;
+~decay.source = 4;
 ~delay = PatternProxy(0.2);
 ~delay.source = 0.1;
-~triad = PatternProxy(~triad_fixer.value(~triads[1], 150)));
-~triad.source = [~triad_fixer.value(200 * ~triads[8], 100)];
 
-
-~triad = PatternProxy([~test[0]]);
-~triad.source = [~test[10]];
-~test[9]
-~test[8]
-
-~triad_fixer.value([200.0, 300.0, 500.0], 100.0)
-
-z = Pser(Prand([1, 1.2, 1.4], 3), inf)
-z = z.asStream
-1.do({z.next.postln})

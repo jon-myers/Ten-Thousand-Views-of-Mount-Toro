@@ -35,5 +35,7 @@ def make_triads(mode, num_of_triads, fund=100, min=150, alpha=3, min_ratio=1.5):
     return [[i] for i in freqs]
 mins = np.linspace(75, 300, 25)
 mins = np.append(mins, np.linspace(300, 75, 25))
-freqs = [make_triads(i, 50, min=150) for index, i in enumerate(modes)]
+mins = np.expand_dims(mins, axis=1)
+freqs = [make_triads(i, 50, min=mins) for index, i in enumerate(modes)]
+freqs = np.concatenate(freqs)
 json.dump(np.array(freqs), open('JSON/triads.JSON', 'w'), cls=h_tools.NpEncoder)
