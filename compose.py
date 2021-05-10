@@ -1,7 +1,7 @@
 from tempo_curve import Time
 from rhythm_tools import rhythmic_sequence_maker as rsm
 import numpy as np
-from mode_generation import make_mode_sequence
+from mode_generation import make_mode_sequence, make_melody
 import json
 from harmony_tools import utils as h_tools
 import numpy_indexed as npi
@@ -41,10 +41,11 @@ for i in range(len(modes)):
 
 # print(t.event_dur_dict[0][1]['texture'][0].phrases)
 
-
+print(t.cycle_starts)
+print(t.cycle_ends)
 # print(t.event_map)
-print(t.subdivs)
-print()
+# print(t.subdivs)
+# print()
 # print(t.event_dur_dict)
 
 
@@ -59,7 +60,7 @@ for i in range(noc):
         subdivs = t.subdivs[mode][i]
         obj['texture'] = t.event_dur_dict[mode][subdivs]['texture']
 
-print(t.event_map)
+# print(t.event_map)
 
 cycle_event_map = {}
 for c in range(noc):

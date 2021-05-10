@@ -56,13 +56,16 @@
 
 (
 SynthDef.new('pluck', {arg coef=0.1, decay=3;
-	var p0, p1, p2, sig, line, buf, freqs;
-
+	var p0, p1, p2, sig, line, buf, freqs, delays;
+	delays = \delays.kr(0.0!3);
 	freqs = \freqs.kr(200!3);
 	line = Line.kr(0.2, 0, 2*decay, doneAction: 2);
 	p0 = ~pluck.value(freqs[0], coef, decay);
 	p1 = ~pluck.value(freqs[1], coef, decay);
 	p2 = ~pluck.value(freqs[2], coef, decay);
+	p0 = AllpassN.ar(p0, 1.0, delays[0], 0);
+	p1 = AllpassN.ar(p1, 1.0, delays[1], 0);
+	p2 = AllpassN.ar(p2, 1.0, delays[2], 0);
 	sig = p0 + p1 + p2;
 	Out.ar(0, Pan2.ar(sig));
 }).add
@@ -73,20 +76,23 @@ x = Synth('pluck', [\freqs, [200, 300, 500]]);
 (
 a = Pbind(
 	\instrument, \pluck,
-	\freqs, ~list,
-	\dur, Prand([0.29, 0.58, 0.45, 1, 1.2, 1.4], inf),
+	\freqs, ~chord,
+	\dur, Pseq([3], inf),
 	\coef, ~coef,
 	\decay, ~decay
 ).play);
 a.stop;
 
 ~list = PatternProxy(Pseq(~generated_list, inf));
-~list.source = Pseq(~generated_list[7], inf);
-~generated_list.size
+~list.source = Pseq(~generated_list[0], inf);
+~chord.source
+~chord = PatternProxy(~triad_fixer.value(~triads[0], 100));
+~chord.source = [~triad_fixer.value(~triads[10], 100)];
 ~coef = PatternProxy(0.1);
-~coef.source = 0.3;
+~coef.source = 0.91;
 ~decay = PatternProxy(3);
-~decay.source = 4;
+~decay.source = 10;
 ~delay = PatternProxy(0.2);
 ~delay.source = 0.1;
 
+0.65 * (2 ** 0.5)

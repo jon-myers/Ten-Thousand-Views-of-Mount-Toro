@@ -116,6 +116,7 @@ class Time:
         sequence maker`, with `start_times` set to True."""
         self.nos = nos
         self.cycle_durs, self.cycle_starts = rsm(nos, nCVI, start_times='both')
+        self.cycle_ends = np.append(self.cycle_starts[1:], [1])
         min_dur = 7
         max_subdivs = 5
         self.event_dur_dict = {}

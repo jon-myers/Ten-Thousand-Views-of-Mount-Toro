@@ -15,26 +15,32 @@ def nCVI(d):
 
 
 def rhythmic_sequence_maker(num_of_thoughts, nCVI_average, factor=2.0, start_times=False):
-
-    section_durs = factor ** np.random.normal(size=2)
-    while abs(nCVI(section_durs) - nCVI_average) > 1.0:
+    if nCVI_average == 0:
+        section_durs = np.ones(num_of_thoughts) / num_of_thoughts
+        starts = np.linspace(0, 1, num_of_thoughts, endpoint=False)
+    else:
         section_durs = factor ** np.random.normal(size=2)
-    for i in range(num_of_thoughts - 2):
-        next_section_durs = np.append(section_durs,[factor ** np.random.normal()])
-        ct=0
-        while abs(nCVI(next_section_durs) - nCVI_average) > 1.0:
-            ct+=1
-            next_section_durs = np.append(section_durs, [factor ** np.random.normal()])
-        section_durs = next_section_durs
-    section_durs /= np.sum(section_durs)
-    cumsum = np.cumsum(section_durs)[:-1]
-    starts = np.insert(cumsum, 0, 0)
+        while abs(nCVI(section_durs) - nCVI_average) > 1.0:
+            section_durs = factor ** np.random.normal(size=2)
+        for i in range(num_of_thoughts - 2):
+            next_section_durs = np.append(section_durs,[factor ** np.random.normal()])
+            ct=0
+            while abs(nCVI(next_section_durs) - nCVI_average) > 1.0:
+                ct+=1
+                next_section_durs = np.append(section_durs, [factor ** np.random.normal()])
+            section_durs = next_section_durs
+        section_durs /= np.sum(section_durs)
+        cumsum = np.cumsum(section_durs)[:-1]
+        starts = np.insert(cumsum, 0, 0)
     if start_times == 'both':
         return section_durs, starts
     elif start_times:
         return starts
     else:
         return section_durs
+
+
+
 
 
 def easy_midi_generator(notes, file_name, midi_inst_name):
