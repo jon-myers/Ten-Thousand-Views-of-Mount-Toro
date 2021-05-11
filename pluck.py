@@ -45,16 +45,17 @@ json.dump(np.array(freqs), open('JSON/triads.JSON', 'w'), cls=h_tools.NpEncoder)
 Golden = (1 + 5 ** 0.5) / 2
 class Pluck:
     """
-    irama 0: basic triad (mode 0, 1, 2), low register, repeated with very low 
-             ncvi (< 3), all three notes in unison (no delays), consistent coef. No 
+    irama 0: basic triad (mode 0, 1, 2), low register, repeated with very low
+             ncvi (< 3), all three notes in unison (no delays), consistent coef. No
              patterning. avg real time tempo = ~20 bpm. no delays. fixed register.
              soft dynamic. long decay (~8 seconds avg?)
     irama 1: low to middle register, nCVI < 5, triads must share two notes with
              basic triad. No patterning.  avg real time tempo = ~ 32. fixed register.
-    irama 2: triads must share one note with basic triad. nCVI < 10. One note 
-             can be delayed / reverse delayed. Patterning. avg real time tempo = 
-             ~ 51. moving register
-    irama 3: all triads are possible. nCVI < 20. Patterning. avg real time tempo 
+    irama 2: triads must share one note with basic triad. nCVI < 10. One note
+             can be delayed / reverse delayed. Patterning. avg real time tempo =
+             ~ 51. moving register. Possibly 1 delayed from other two (or two
+             delayed from other one).
+    irama 3: all triads are possible. nCVI < 20. Patterning. avg real time tempo
              ~ 81. moving register.
     """
     def __init__(self, irama, real_dur, offsets, mode, fund, rt_since_last):
@@ -72,10 +73,11 @@ class Pluck:
         self.base_decay_dur = 8
         self.base_coef = 0.65
         self.floor_nCVI = 0
-    
+        self.base_vol = 0.5
+
     def render(self):
         if np.size(self.irama) == 2:
-            print('gotta figure this part out')    
+            print('gotta figure this part out')
         elif self.irama == 0:
             return self.irama_0()
         elif self.irama == 1:
@@ -84,11 +86,11 @@ class Pluck:
             return self.irama_2()
         elif self.irama == 3:
             return self.irama_3()
-        
-                
+
+
     def irama_0(self):
-        """basic triad (mode 0, 1, 2), low register, repeated with very low 
-           ncvi (< 3), all three notes in unison (no delays), consistent coef. No 
+        """basic triad (mode 0, 1, 2), low register, repeated with very low
+           ncvi (< 3), all three notes in unison (no delays), consistent coef. No
            patterning. avg real time tempo = ~20 bpm. no delays. fixed register.
            soft dynamic. long decay (~8 seconds avg?)"""
         tempo_offset = self.offsets[0]
@@ -96,17 +98,18 @@ class Pluck:
         min_offset = self.offsets[2]
         decay_offset = self.offsets[3]
         coef_offset = self.offsets[4]
-        
+
         base_tempo = self.base_tempo
         base_min_freq = self.base_min_freq
         base_decay_dur = self.base_decay_dur
         base_coef = self.base_coef
         floor_nCVI = self.floor_nCVI
-        
+        base_vol = self.base_vol
+
         tempo = base_tempo * (2 ** (tempo_offset - 0.5))
         avg_dur = 60 / tempo
         num_of_events = np.round(self.real_dur / avg_dur).astype(int)
-        if num_of_events == 0: 
+        if num_of_events == 0:
             num_of_events = 1
         nCVI = floor_nCVI + 3 * nCVI_offset
         durs, event_locs = rsm(num_of_events, nCVI, start_times='both')
@@ -132,26 +135,68 @@ class Pluck:
             packet['coef'] = coef
             packet['decay'] = decay
             packet['delays'] = delays
-            self.packets.append(packet) 
-        return self.packets 
-                  
-    def irama_1():
-        """irama 1: low to middle register, nCVI < 5, triads must share two notes with
-                 basic triad. No patterning.  avg real time tempo = ~ 32. fixed register."""
+            packet['vol'] = base_vol
+            self.packets.append(packet)
+        return self.packets
+
+    def irama_1(self):
+        """irama 1: low to middle register, nCVI < 5, triads must share two
+        notes with basic triad. No patterning.  avg real time tempo = ~32. fixed
+        register. No delays."""
         tempo_offset = self.offsets[0]
         nCVI_offset = self.offsets[1]
         min_offset = self.offsets[2]
         decay_offset = self.offsets[3]
         coef_offset = self.offsets[4]
-        
+        vol_offset = self.offsets[5]
+
         base_tempo = self.base_tempo * Golden
         base_min_freq = self.base_min_freq * Golden
-        base_decay_dur = self.base_decay_dur * Golden
-        base_coef = self.base_coef * Golden
-        floor_nCVI = self.floor_nCVI * Golden
-        
-        tempo = base+tempo * (2 ** (tempo_offset - 0.5))
-        
+        base_decay_dur = self.base_decay_dur / Golden
+        base_coef = self.base_coef / Golden
+        bass_nCVI = Golden ** 2 # then 4rd, 6th,
+        base_vol = self.base_vol
+
+        tempo = base_tempo * (2 ** (tempo_offset - 0.5))
+        avg_dur = 60 / tempo
+        num_of_events = np.round(self.real_dur / avg_dur).astype(int)
+        if num_of_events == 0:
+            num_of_events = 1
+        nCVI = bass_nCVI * 2 ** (nCVI_offset -0.5)
+        durs, event_locs = rsm(num_of_events, nCVI, start_times='both')
+        start_offset = (1 / num_of_events) - self.rt_since_last / self.real_dur
+        # breakpoint()
+        event_locs += start_offset
+        event_locs = np.append((0), event_locs)
+        event_locs = event_locs[np.nonzero(event_locs < 1)]
+        durs = np.append((start_offset), durs)[:event_locs.size]
+
+        triads = self.get_triads(len(event_locs), shared=2)
+        # triad = self.get_triad(shared=2) * self.fund
+        min_freq = base_min_freq * 2 ** ((min_offset - 0.5))
+        freqs = [self.registrate(triad, min_freq) for triad in triads]
+        freqs.insert(0, 'Rest()')
+        delays = [0, 0, 0]
+        decay = base_decay_dur * (2 ** (decay_offset - 1))
+        coef = base_coef * (2 ** (coef_offset - 1))
+        if coef >= 1: coef = 0.999 # prob don't need this, but just in case
+        vol = base_vol * 2 ** ((vol_offset - 0.5) / 2)
+        self.packets = []
+        for i in range(len(event_locs)):
+            packet = {}
+            packet['freqs'] = freqs[i]
+            packet['dur'] = durs[i]
+            packet['coef'] = coef
+            packet['decay'] = decay
+            packet['delays'] = delays
+            packet['vol'] = vol
+            self.packets.append(packet)
+        return self.packets
+
+
+
+
+
     def registrate(self, chord, min):
         freqs = np.sort(chord)
         freqs = np.where(freqs < min,
@@ -168,23 +213,25 @@ class Pluck:
         while condition(freqs):
             freqs[1] *= 2
             freqs = np.sort(freqs)
-            
+
         return freqs
-    
+
     def get_triad(self, shared=3):
+        """Grab a single particular triad"""
         base_triad = self.mode[:3]
-        # if shared == 3:
-        #     return base_triad
-        # elif shared == 2:
-        #     idxs = np.random.choice(np.arange(3), size=shared)
-            
         rng = default_rng()
         out = base_triad[rng.choice(np.arange(3), size=shared, replace=False)]
         while np.size(out) < 3:
             ad = rng.choice(np.arange(3, np.size(self.mode)), size=3-np.size(out))
             out = np.append(out, self.mode[ad])
         return np.sort(out)
-            
-p = Pluck(0, 10, np.random.uniform(0, 1, size=5), modes[0], 150, 1.0)            
-# print(p.render())
-print(p.get_triad(1))
+
+    def get_triads(self, num_of_triads, shared=3):
+        """Generate a list of triads. """
+        triads = np.array([self.get_triad(shared) for i in range(num_of_triads)])
+        return triads
+
+
+p = Pluck(1, 10, np.random.uniform(0, 1, size=6), modes[0], 150, 1.0)
+print(p.render())
+# print(p.get_triad(2))
