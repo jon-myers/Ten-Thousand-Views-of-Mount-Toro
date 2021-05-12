@@ -1,10 +1,13 @@
 import json
 from harmony_tools import utils as h_tools
 from rhythm_tools import rhythmic_sequence_maker as rsm
+from rhythm_tools import spread
 import numpy as np
 import numpy_indexed as npi
 modes = json.load(open('JSON/modes_and_variations.JSON', 'rb'))[0]
 from numpy.random import default_rng
+rng = default_rng()
+
 
 def make_triads(mode, num_of_triads, fund=100, min=150, alpha=3, min_ratio=1.5):
     unq_lens = 0
@@ -106,10 +109,11 @@ class Pluck:
         floor_nCVI = self.floor_nCVI
         base_vol = self.base_vol
 
-        tempo = base_tempo * (2 ** (tempo_offset - 0.5))
+        tempo = self.do_offset(base_tempo, tempo_offset)
         avg_dur = 60 / tempo
         num_of_events = np.round(self.real_dur / avg_dur).astype(int)
         if num_of_events == 0:
+            print('num_of_events would have been none!')
             num_of_events = 1
         nCVI = floor_nCVI + 3 * nCVI_offset
         durs, event_locs = rsm(num_of_events, nCVI, start_times='both')
@@ -157,12 +161,13 @@ class Pluck:
         bass_nCVI = Golden ** 2 # then 4rd, 6th,
         base_vol = self.base_vol
 
-        tempo = base_tempo * (2 ** (tempo_offset - 0.5))
+        tempo = self.do_offset(base_tempo, tempo_offset)
         avg_dur = 60 / tempo
         num_of_events = np.round(self.real_dur / avg_dur).astype(int)
         if num_of_events == 0:
+            print('num_of_events would have been none!')
             num_of_events = 1
-        nCVI = bass_nCVI * 2 ** (nCVI_offset -0.5)
+        nCVI = self.do_offset(bass_nCVI, nCVI_offset)
         durs, event_locs = rsm(num_of_events, nCVI, start_times='both')
         start_offset = (1 / num_of_events) - self.rt_since_last / self.real_dur
         # breakpoint()
@@ -194,7 +199,74 @@ class Pluck:
         return self.packets
 
 
-
+    def irama_2(self):
+        """triads must share one note with basic triad. nCVI < 10. One note can 
+        be delayed / reverse delayed. Patterning. avg real time tempo = ~51. 
+        moving register. Possibly 1 delayed from other two (or two delayed from 
+        other one)."""
+        
+        tempo_offset = self.offsets[0]
+        nCVI_offset = self.offsets[1]
+        min_offset = self.offsets[2]
+        decay_offset = self.offsets[3]
+        coef_offset = self.offsets[4]
+        vol_offset = self.offsets[5]
+        
+        base_tempo = self.base_tempo * (Golden ** 2)
+        base_min_freq = self.base_min_freq * (Golden ** 2)
+        base_decay_dur = self.base_decay_dur / (Golden **2)
+        base_coef = self.base_coef / (Golden ** 2)
+        bass_nCVI = Golden ** 4 # then 6th,
+        base_vol = self.base_vol
+        
+        tempo = self.do_offset(base_tempo, tempo_offset)
+        avg_dur = 60 / tempo
+        nCVI = self.do_offset(bass_nCVI, nCVI_offset)
+        
+        patterning_event_min = 3
+        num_of_events = np.round(self.real_dur / avg_dur).astype(int)
+        if num_of_events == 0: 
+            print('num_of_events would have been none!')
+            num_of_events = 1
+            
+        max_num_of_reps = np.floor(num_of_events / patterning_event_min)
+        if max_num_of_reps < 2:
+            num_of_reps = 1
+        else:
+            num_of_reps = rng.choice(np.arange(1, max_num_of_reps))
+        num_per_rep = np.floor(num_of_events / num_of_reps)
+        
+        rep_durs = rsm(num_per_rep, nCVI)
+        rep_durs = [spread(rep_durs) for i in range(num_of_reps)]
+        
+         
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    def get_delays(self, groups=2, max_del=0.2):
+        """Returns array with delay times that specify how much after event time
+        the three notes of the triad will be struck. Always at least one at zero
+        time. If groups == 2, (at least) two of three must occur simultaenously.
+        If groups == 3, all can occur seperate, (a 'strum')."""
+        max_del = float(max_del)
+        delays = np.zeros(3)
+        if groups == 2:
+            del_times = np.random.random() * max_del
+            num_dels = np.random.randint(2) + 1
+            idxs = rng.choice(np.arange(3), size=num_dels, replace=False)            
+        elif groups == 3:
+            del_times = np.random.random(2) * max_del
+            idxs = rng.choice(np.arange(3), size=2, replace=False)
+        delays[idxs] = del_times
+        return delays
+            
+        
 
 
     def registrate(self, chord, min):
@@ -219,7 +291,6 @@ class Pluck:
     def get_triad(self, shared=3):
         """Grab a single particular triad"""
         base_triad = self.mode[:3]
-        rng = default_rng()
         out = base_triad[rng.choice(np.arange(3), size=shared, replace=False)]
         while np.size(out) < 3:
             ad = rng.choice(np.arange(3, np.size(self.mode)), size=3-np.size(out))
@@ -230,8 +301,12 @@ class Pluck:
         """Generate a list of triads. """
         triads = np.array([self.get_triad(shared) for i in range(num_of_triads)])
         return triads
+        
+    def do_offset(self, base_val, offset):
+        """Spreads value to limit of (x ** -0.5, x ** 0.5) according to offset. 
+        offset must be betwen 0 and 1. """
+        return base_val * (2 ** (offset - 0.5))
 
 
 p = Pluck(1, 10, np.random.uniform(0, 1, size=6), modes[0], 150, 1.0)
 print(p.render())
-# print(p.get_triad(2))

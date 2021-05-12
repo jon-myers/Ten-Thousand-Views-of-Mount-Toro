@@ -14,15 +14,16 @@ def nCVI(d):
 
 
 
-def rhythmic_sequence_maker(num_of_thoughts, nCVI_average, factor=2.0, start_times=False):
+def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times=False):
+    """aka 'rsm'. """
     if nCVI_average == 0:
-        section_durs = np.ones(num_of_thoughts) / num_of_thoughts
-        starts = np.linspace(0, 1, num_of_thoughts, endpoint=False)
+        section_durs = np.ones(num_of_events) / num_of_events
+        starts = np.linspace(0, 1, num_of_events, endpoint=False)
     else:
         section_durs = factor ** np.random.normal(size=2)
         while abs(nCVI(section_durs) - nCVI_average) > 1.0:
             section_durs = factor ** np.random.normal(size=2)
-        for i in range(num_of_thoughts - 2):
+        for i in range(num_of_events - 2):
             next_section_durs = np.append(section_durs,[factor ** np.random.normal()])
             ct=0
             while abs(nCVI(next_section_durs) - nCVI_average) > 1.0:
@@ -39,8 +40,10 @@ def rhythmic_sequence_maker(num_of_thoughts, nCVI_average, factor=2.0, start_tim
     else:
         return section_durs
 
-
-
+# def patterned_rsm(num_of_events, nCVI_avg, reps, factor=2.0, start_times=False):
+#     """rsm, but split such that the same thing happens repeatedly, thoughts style.
+#     need to somehow carry over the info about where the pattern repeats. """
+# 
 
 
 def easy_midi_generator(notes, file_name, midi_inst_name):
