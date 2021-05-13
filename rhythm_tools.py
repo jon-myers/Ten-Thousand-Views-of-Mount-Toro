@@ -16,6 +16,7 @@ def nCVI(d):
 
 def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times=False):
     """aka 'rsm'. """
+    num_of_events = int(num_of_events)
     if nCVI_average == 0:
         section_durs = np.ones(num_of_events) / num_of_events
         starts = np.linspace(0, 1, num_of_events, endpoint=False)
@@ -43,7 +44,7 @@ def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times
 # def patterned_rsm(num_of_events, nCVI_avg, reps, factor=2.0, start_times=False):
 #     """rsm, but split such that the same thing happens repeatedly, thoughts style.
 #     need to somehow carry over the info about where the pattern repeats. """
-# 
+#
 
 
 def easy_midi_generator(notes, file_name, midi_inst_name):
