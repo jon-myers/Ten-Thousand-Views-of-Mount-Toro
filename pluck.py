@@ -10,41 +10,43 @@ import itertools
 rng = default_rng()
 
 
-def make_triads(mode, num_of_triads, fund=100, min=150, alpha=3, min_ratio=1.5):
-    unq_lens = 0
-    mode = np.array(mode)
-    while np.any(unq_lens != 3):
-        seq = h_tools.dc_alg(len(mode), 3 * num_of_triads, alpha=alpha)
-        triads = np.array(np.split(seq, num_of_triads))
-        unq_lens = np.array([len(set(i)) for i in triads])
-    freqs = mode[triads] * fund
-    freqs = np.sort(freqs)
-    freqs = np.where(freqs < min,
-        freqs * (2 ** np.ceil(np.log2(min/freqs))), freqs)
-    freqs = np.where(freqs >= 2 * min,
-        freqs / (2 ** np.floor(np.log2(freqs/min))), freqs)
-    freqs = np.sort(freqs)
-
-    def condition(freq_triad):
-        out = np.logical_or(freq_triad[1] / freq_triad[0] < min_ratio,
-            freq_triad[2]/ freq_triad[1] < 1.3333)
-        return out
-
-    for i in range(len(freqs)):
-        init_freqs_i = freqs[i]
-        while condition(freqs[i]):
-            freqs[i][1] *= 2
-            freqs[i] = np.sort(freqs[i])
-            if np.any(freqs[i] == np.inf):
-                breakpoint()
-    return [[i] for i in freqs]
-mins = np.linspace(75, 300, 25)
-mins = np.append(mins, np.linspace(300, 75, 25))
-mins = np.expand_dims(mins, axis=1)
-freqs = [make_triads(i, 50, min=mins) for index, i in enumerate(modes)]
-freqs = np.concatenate(freqs)
-json.dump(np.array(freqs), open('JSON/triads.JSON', 'w'), cls=h_tools.NpEncoder)
-
+# def make_triads(mode, num_of_triads, fund=100, min=150, alpha=3, min_ratio=1.5):
+#     unq_lens = 0
+#     mode = np.array(mode)
+#     while np.any(unq_lens != 3):
+#         seq = h_tools.dc_alg(len(mode), 3 * num_of_triads, alpha=alpha)
+#         triads = np.array(np.split(seq, num_of_triads))
+#         unq_lens = np.array([len(set(i)) for i in triads])
+#     freqs = mode[triads] * fund
+#     freqs = np.sort(freqs)
+#     freqs = np.where(freqs < min,
+#         freqs * (2 ** np.ceil(np.log2(min/freqs))), freqs)
+#     freqs = np.where(freqs >= 2 * min,
+#         freqs / (2 ** np.floor(np.log2(freqs/min))), freqs)
+#     freqs = np.sort(freqs)
+# 
+#     def condition(freq_triad):
+#         out = np.logical_or(freq_triad[1] / freq_triad[0] < min_ratio,
+#             freq_triad[2]/ freq_triad[1] < 1.3333)
+#         return out
+# 
+#     for i in range(len(freqs)):
+#         init_freqs_i = freqs[i]
+#         while condition(freqs[i]):
+#             freqs[i][1] *= 2
+#             freqs[i] = np.sort(freqs[i])
+#             if np.any(freqs[i] == np.inf):
+#                 breakpoint()
+#     return [[i] for i in freqs]
+# 
+# 
+# mins = np.linspace(75, 300, 25)
+# mins = np.append(mins, np.linspace(300, 75, 25))
+# mins = np.expand_dims(mins, axis=1)
+# freqs = [make_triads(i, 50, min=mins) for index, i in enumerate(modes)]
+# freqs = np.concatenate(freqs)
+# json.dump(np.array(freqs), open('JSON/triads.JSON', 'w'), cls=h_tools.NpEncoder)
+# 
 
 Golden = (1 + 5 ** 0.5) / 2
 class Pluck:
@@ -82,7 +84,21 @@ class Pluck:
 
     def render(self):
         if np.size(self.irama) == 2:
-            print('gotta figure this part out')
+            if self.irama[0] == 0:
+                A = self.irama_0()
+                B = self.irama_1() 
+            elif self.irama[0] == 1:
+                A = self.irama_1()
+                B = self.irama_2()
+            elif self.irama[0] == 2:
+                A = self.irama_2()
+                B = self.irama_3()
+            elif self.irama[0] == 3:
+                return self.irama_3()
+            A = [i for i in A if i['start'] < self.transition_point]
+            B = [i for i in B if i['start'] >= self.transition_point]
+            return A + B
+                
         elif self.irama == 0:
             return self.irama_0()
         elif self.irama == 1:
@@ -120,6 +136,7 @@ class Pluck:
         nCVI = floor_nCVI + 3 * nCVI_offset
         durs, event_locs = rsm(num_of_events, nCVI, start_times='both')
         start_offset = (1 / num_of_events) - self.rt_since_last / self.real_dur
+        if start_offset < 0: start_offset = 0
         event_locs += start_offset
         event_locs = np.append((0), event_locs)
         event_locs = event_locs[np.nonzero(event_locs < 1)]
@@ -143,6 +160,10 @@ class Pluck:
             packet['delays'] = delays
             packet['vol'] = base_vol
             packet['start'] = event_locs[i]
+            if i == len(event_locs) - 1:
+                packet['end'] = 1.0
+            else:
+                packet['end'] = event_locs[i+1]
             self.packets.append(packet)
         return self.packets
 
@@ -173,6 +194,7 @@ class Pluck:
         nCVI = self.do_offset(bass_nCVI, nCVI_offset)
         durs, event_locs = rsm(num_of_events, nCVI, start_times='both')
         start_offset = (1 / num_of_events) - self.rt_since_last / self.real_dur
+        if start_offset < 0: start_offset = 0
         event_locs += start_offset
         event_locs = np.append((0), event_locs)
         event_locs = event_locs[np.nonzero(event_locs < 1)]
@@ -196,6 +218,10 @@ class Pluck:
             packet['delays'] = delays
             packet['vol'] = vol
             packet['start'] = event_locs[i]
+            if i == len(event_locs) - 1:
+                packet['end'] = 1.0
+            else:
+                packet['end'] = event_locs[i+1]
             self.packets.append(packet)
         return self.packets
 
@@ -251,14 +277,13 @@ class Pluck:
         vol_center = base_vol + ((vol_offset - 0.5) / 2)
         vols = [vol_center + (np.random.rand() - 0.5) / 4 for i in range(num_per_rep)]
 
-
         rep_delays = [delays for i in range(num_of_reps)]
         rep_freqs = [freqs for i in range(num_of_reps)]
         rep_coefs = [coefs for i in range(num_of_reps)]
         rep_decays = [decays for i in range(num_of_reps)]
         rep_vols = [vols for i in range(num_of_reps)]
         rep_durs = [jiggle_sequence(durs, 1.2) for i in range(num_of_reps)]
-
+        
         for gap_index in range(1, num_of_reps)[::-1]:
             gap = np.random.randint(2, dtype=bool)
             if gap:
@@ -269,24 +294,25 @@ class Pluck:
                 rep_coefs.insert(gap_index, [0.1])
                 rep_decays.insert(gap_index, [3])
                 rep_vols.insert(gap_index, [0.5])
-
         full_durs = np.concatenate(rep_durs)
         full_durs /= np.sum(full_durs)
         full_freqs = list(itertools.chain.from_iterable(rep_freqs))
         full_delays = np.concatenate(rep_delays)
+        # breakpoint()
         full_coefs = np.concatenate(rep_coefs)
         full_decays = np.concatenate(rep_decays)
         full_vols = np.concatenate(rep_vols)
 
         full_event_locs = np.append((0), np.cumsum(full_durs)[:-1])
         start_offset = (1 / len(full_event_locs)) - self.rt_since_last / self.real_dur
+        if start_offset < 0: start_offset = 0
         full_event_locs += start_offset
         full_event_locs = full_event_locs[np.nonzero(full_event_locs < 1)]
 
         size = np.size(full_event_locs)
         full_freqs.insert(0, 'Rest()')
         full_freqs = full_freqs[:size]
-        full_delays = np.append([0, 0, 0], full_delays)[:size]
+        full_delays = np.concatenate(([[0, 0, 0]], full_delays))[:size]
         full_coefs = np.append(0.1, full_coefs)[:size]
         full_decays = np.append(3, full_decays)[:size]
         full_vols = np.append(0.5, full_vols)[:size]
@@ -299,6 +325,11 @@ class Pluck:
             packet['decay'] = full_decays[i]
             packet['delays'] = full_delays[i]
             packet['vol'] = full_vols[i]
+            packet['start'] = full_event_locs[i]
+            if i == len(full_event_locs) - 1:
+                packet['end'] = 1.0
+            else:
+                packet['end'] = full_event_locs[i+1]
             self.packets.append(packet)
         return self.packets
 
@@ -392,13 +423,14 @@ class Pluck:
 
         full_event_locs = np.append((0), np.cumsum(full_durs)[:-1])
         start_offset = (1 / len(full_event_locs)) - self.rt_since_last / self.real_dur
+        if start_offset < 0: start_offset = 0
         full_event_locs += start_offset
         full_event_locs = full_event_locs[np.nonzero(full_event_locs < 1)]
 
         size = np.size(full_event_locs)
         full_freqs.insert(0, 'Rest()')
         full_freqs = full_freqs[:size]
-        full_delays = np.append([0, 0, 0], full_delays)[:size]
+        full_delays = np.concatenate(([[0, 0, 0]], full_delays))[:size]
         full_coefs = np.append(0.1, full_coefs)[:size]
         full_decays = np.append(3, full_decays)[:size]
         full_vols = np.append(0.5, full_vols)[:size]
@@ -411,6 +443,12 @@ class Pluck:
             packet['decay'] = full_decays[i]
             packet['delays'] = full_delays[i]
             packet['vol'] = full_vols[i]
+            packet['start'] = full_event_locs[i]
+            if i == len(full_event_locs) - 1:
+                packet['end'] = 1.0
+            else:
+                packet['end'] = full_event_locs[i+1]
+                
             self.packets.append(packet)
         return self.packets
 
@@ -446,12 +484,12 @@ class Pluck:
 
 
 
-    def registrate(self, chord, min):
-        freqs = np.sort(chord)
-        freqs = np.where(freqs < min,
-            freqs * (2 ** np.ceil(np.log2(min/freqs))), freqs)
-        freqs = np.where(freqs >= 2 * min,
-            freqs / (2 ** np.floor(np.log2(freqs/min))), freqs)
+    def registrate(self, chord, min_):
+        freqs = np.sort(chord).astype(float)
+        freqs = np.where(freqs < min_,
+            freqs * (2 ** np.ceil(np.log2(min_/freqs))), freqs)
+        freqs = np.where(freqs >= 2 * min_,
+            freqs / (2 ** np.floor(np.log2(freqs/min_))), freqs)
         freqs = np.sort(freqs)
 
         def condition(freq_triad):
@@ -485,9 +523,9 @@ class Pluck:
         return base_val * (2 ** (offset - subtract))
 
 
-p = Pluck(3, 40, np.random.uniform(0, 1, size=6), modes[0], 150, 1.0)
-packets = p.render()
-
-json.dump(packets, open('JSON/packets.JSON', 'w'), cls=h_tools.NpEncoder)
+# p = Pluck(2, 20, np.random.uniform(0, 1, size=6), modes[0], 150, 1.0)
+# packets = p.render()
+# print(packets)
+# json.dump(packets, open('JSON/packets.JSON', 'w'), cls=h_tools.NpEncoder)
 #     print(rd)
 #     print()

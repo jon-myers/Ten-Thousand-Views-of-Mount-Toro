@@ -11,7 +11,7 @@ from textures import Thoughts_Texture
 
 
 noc = 7
-dur_tot = 29*60
+dur_tot = 60*60
 fund = 150
 modes, variations = make_mode_sequence((10, 20))
 melody = make_melody(modes, variations)
@@ -41,8 +41,8 @@ for i in range(len(modes)):
 
 # print(t.event_dur_dict[0][1]['texture'][0].phrases)
 
-print(t.cycle_starts)
-print(t.cycle_ends)
+# print(t.cycle_starts)
+# print(t.cycle_ends)
 # print(t.event_map)
 # print(t.subdivs)
 # print()

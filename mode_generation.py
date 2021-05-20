@@ -326,8 +326,12 @@ def make_mode_sequence(size_lims=(6, 30), alpha=4):
     mult = base ** np.arange(len(funds)-1)
     mult = np.expand_dims(mult, 1)
     modes = np.array(modes) * mult
-    alt_modes = [(alt[0]*mult[i], alt[1]*mult[i]) for i, alt in enumerate(alt_modes)]
-    return modes, alt_modes
+    var_0 = np.array(alt_modes)[:,0] * mult
+    var_1 = np.array(alt_modes)[:, 1] * mult
+    
+
+    concat_modes = np.array((modes, var_0, var_1)) 
+    return concat_modes
 
 
 def make_melody(modes, variations):
@@ -335,8 +339,8 @@ def make_melody(modes, variations):
     melody = []
     for i in range(len(modes)):
         A = h_tools.gen_ratios_to_hsv(modes[i]/modes[i][0], [3, 5, 7])
-        B = h_tools.gen_ratios_to_hsv(variations[i][0]/modes[i][0], [3, 5, 7])
-        C = h_tools.gen_ratios_to_hsv(variations[i][1]/modes[i][0], [3, 5, 7])
+        B = h_tools.gen_ratios_to_hsv(variations[0][i]/modes[i][0], [3, 5, 7])
+        C = h_tools.gen_ratios_to_hsv(variations[1][i]/modes[i][0], [3, 5, 7])
 
         abc = npi.intersection(A, B, C)
         ab = npi.intersection(A, B)

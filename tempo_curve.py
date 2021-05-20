@@ -151,8 +151,10 @@ class Time:
 
             for j in range(self.noc):
                 dur = self.real_time_dur_from_cycle_event(j, i)
-                subdivs = np.floor(dur / min_dur)
-                if subdivs == 0:
+                upper_lim = np.floor(dur / min_dur)
+                if upper_lim > 1:
+                    subdivs = np.random.choice(np.arange(1, np.floor(dur / min_dur)))
+                else: 
                     subdivs = 1
                 if subdivs > max_subdivs:
                     subdivs = max_subdivs

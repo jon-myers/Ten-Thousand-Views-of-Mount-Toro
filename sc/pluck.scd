@@ -71,17 +71,22 @@ SynthDef.new('pluck', {arg coef=0.1, decay=3;
 }).add
 );
 
-x = Synth('pluck', [\freqs, [200, 300, 500]]);
+x = Synth('pluck', [\freqs, [200, 300, 500], \delays, [0, 0.1, 0.2]]);
 
 (
 a = Pbind(
 	\instrument, \pluck,
-	\freqs, ~chord,
-	\dur, Pseq([3], inf),
+	\freqs, Pseq([Rest()] ++ ~generated_list[2..5], inf),
+	\dur, Pseq([1.5, 3, 3, 3], inf),
 	\coef, ~coef,
-	\decay, ~decay
+	\decay, ~decay,
+	\delays, [[0.0, 0.0, 0.0]]
 ).play);
 a.stop;
+[[[Rest(), Rest(), Rest()]]] ++ ~generated_list[2..5]
+[[0, 0, 0]] ++ [[1, 0, 0]]
+
+[[[Rest(), Rest(), Rest()]]] ++ ~generated_list[2..5]
 
 ~list = PatternProxy(Pseq(~generated_list, inf));
 ~list.source = Pseq(~generated_list[0], inf);
@@ -92,7 +97,11 @@ a.stop;
 ~coef.source = 0.91;
 ~decay = PatternProxy(3);
 ~decay.source = 10;
-~delay = PatternProxy(0.2);
-~delay.source = 0.1;
+90*1.6
 
+~generated_list
+
+~generated_list[2..5]
+
+[Rest()] ++ ~generated_list[2..5]
 0.65 * (2 ** 0.5)

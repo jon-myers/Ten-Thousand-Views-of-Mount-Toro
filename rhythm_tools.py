@@ -45,7 +45,11 @@ def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times
 #     """rsm, but split such that the same thing happens repeatedly, thoughts style.
 #     need to somehow carry over the info about where the pattern repeats. """
 #
-
+# r = rhythmic_sequence_maker(5, 20)
+# from matplotlib import pyplot as plt
+# 
+# plt.bar(np.arange(r.size), r)
+# plt.show()
 
 def easy_midi_generator(notes, file_name, midi_inst_name):
     notes = sorted(notes, key=(lambda x: x[1]))
@@ -132,6 +136,11 @@ def normalize(array):
 
 def jiggle_sequence(sequence, spd):
     return normalize(np.array([spread(i, spd) for i in sequence]))
+
+
+s = [spread(0.5, 2) for i in range(100)]
+print(max(s))
+print(min(s))
 
 # test = [0.2, 0.2, 0.2, 0.2, 0.2]
 # out = jiggle_sequence(test, 1.5)
