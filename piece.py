@@ -30,14 +30,14 @@ class Piece:
                 instance.make_plucks()
         self.compile_plucks()
         self.format_plucks_JSON()
-        
+
         # print(self.offsets)
-    
+
     def assign_params(self):
         for section in self.sections:
             packet = np.random.uniform(size=8)
             section.param_packet = packet
-            
+
     def compile_plucks(self):
         self.all_plucks = []
         for cycle in self.cycles:
@@ -46,11 +46,11 @@ class Piece:
                     for pluck in plucks:
                         if pluck['dur'] != 0:
                             self.all_plucks.append(pluck)
-    
+
     def format_plucks_JSON(self):
-        """Takes the all_plucks list, which consists of each item having an 
+        """Takes the all_plucks list, which consists of each item having an
         object that contains all of its parameters, to an object wherein each
-        parameter has a list for all events, easier for getting into PBinds in 
+        parameter has a list for all events, easier for getting into PBinds in
         Supercollider."""
         self.json_plucks = {}
         self.json_plucks['freqs'] = []
@@ -61,7 +61,7 @@ class Piece:
         self.json_plucks['rt_start'] = [] # might not need this
         self.json_plucks['rt_end'] = [] # might not need this
         self.json_plucks['rt_dur'] = []
-        
+
         for pluck in self.all_plucks:
             # breakpoint()
             self.json_plucks['freqs'].append(pluck['freqs'])
@@ -72,12 +72,12 @@ class Piece:
             self.json_plucks['rt_start'].append(pluck['rt_start'])
             self.json_plucks['rt_end'].append(pluck['rt_end'])
             self.json_plucks['rt_dur'].append(pluck['rt_dur'])
-            
-        json.dump(self.json_plucks, open('JSON/all_plucks.JSON', 'w'), 
+
+        json.dump(self.json_plucks, open('JSON/all_plucks.JSON', 'w'),
                     cls=h_tools.NpEncoder)
 
-        
-    def get_irama_transitions(self):    
+
+    def get_irama_transitions(self):
         self.irama_transitions = []
         for c in range(self.noc):
             for s in range(self.nos):
@@ -102,7 +102,7 @@ class Cycle:
         self.assign_irama()
         self.event_map = self.time.event_map[self.cycle_num]
 
-    
+
     def assign_irama(self):
         starting_tempi = np.array([self.time.mm_from_cycles(i) for i in self.section_starts])
         ending_tempi = np.array([self.time.mm_from_cycles(i) for i in self.section_ends])
@@ -116,8 +116,8 @@ class Cycle:
                 ir = (starting_irama[i], ending_irama[i])
             self.irama.append(ir)
             self.sections[i].irama.append(ir)
-    
-    
+
+
     def assign_instances(self):
         self.instances = []
         for i in range(len(self.sections)):
@@ -125,8 +125,8 @@ class Cycle:
             self.instances.append(instance)
             self.sections[i].instances.append(instance)
     # def realize_pluck(self):
-        
-        
+
+
 
 
 class Section:
@@ -137,7 +137,7 @@ class Section:
         self.time = self.piece.time
         self.irama = []
         self.instances = []
-        
+
         # self.cycles is assigned in Piece __init__, line 14
 
 
@@ -151,7 +151,7 @@ class Section:
 
 class Instance:
     """A class for a particular instance of a section in a cycle."""
-    
+
     def __init__(self, cycle_num, section_num, piece):
         self.cycle_num = cycle_num
         self.section_num = section_num
@@ -162,7 +162,7 @@ class Instance:
         self.irama = self.cycle.irama[self.section_num]
         self.get_event_map()
         self.get_real_durs()
-        
+
     def get_event_map(self):
         em = self.cycle.event_map
         keys = self.cycle.event_map.keys()
@@ -177,26 +177,26 @@ class Instance:
                     obj['end'] = 1
                 obj['dur'] = obj['end'] - obj['start']
                 self.event_map.append(obj)
-    
+
     def get_real_durs(self):
         """Get real durs of all segments in instance."""
         self.real_durs = []
         for obj in self.event_map:
-            cy_start = obj['start'] + self.cycle_num 
+            cy_start = obj['start'] + self.cycle_num
             cy_end = obj['end'] + self.cycle_num
             real_start = self.time.real_time_from_cycles(cy_start)
             real_end = self.time.real_time_from_cycles(cy_end)
             real_dur = real_end - real_start
             self.real_durs.append(real_dur)
-            
-        
-        
+
+
+
     def make_plucks(self):
-        
+
         """
-        
-        
-        (note that, throughout all this, 'plucks' objects describe time from 0-1 
+
+
+        (note that, throughout all this, 'plucks' objects describe time from 0-1
         for their own entirety, not . )"""
         self.plucks = []
         for i, obj in enumerate(self.event_map):
@@ -209,13 +209,13 @@ class Instance:
             ct_section_start = obj['start'] + self.cycle_num
             rt_section_start = self.time.real_time_from_cycles(ct_section_start)
             if i > 0:
-                prev_obj = self.event_map[i-1]  
+                prev_obj = self.event_map[i-1]
                 ct_last_event = self.plucks[-1][-1]['start'] * prev_obj['dur'] + prev_obj['start'] + self.cycle_num
                 rt_last_event = self.time.real_time_from_cycles(ct_last_event)
                 rt_since_last = rt_section_start - rt_last_event
-            elif self.section_num == 0: 
+            elif self.section_num == 0:
                 if self.cycle_num == 0:
-                    rt_since_last = 10000 # doesn't need to be this big, but 
+                    rt_since_last = 10000 # doesn't need to be this big, but
                                           # anything biggish should suffice
                 else:
                     prev_cy = self.piece.cycles[self.cycle_num-1]
@@ -230,7 +230,7 @@ class Instance:
                 ct_last_event = prev_pluck['start'] * prev_inst.event_map[-1]['dur'] + prev_inst.event_map[-1]['start'] + self.cycle_num
                 rt_last_event = self.time.real_time_from_cycles(ct_last_event)
                 rt_since_last = rt_section_start - rt_last_event
-            
+
             p = Pluck(self.irama, real_dur, offsets, mode, fund, rt_since_last)
             packets = p.render()
             # breakpoint()
@@ -246,20 +246,20 @@ class Instance:
                 packet['rt_end'] = rt_end
                 packet['rt_dur'] = rt_end - rt_start
             self.plucks.append(packets)
-            
-        
-        
-        
-        
-            
-            
 
-        
-        
+
+
+
+
+
+
+
+
+
 noc = 7
-dur_tot = 29*20
+dur_tot = 29*60
 fund = 150
-modes = make_mode_sequence((10, 20)) # a single np array with three columns, 
+modes = make_mode_sequence((10, 20)) # a single np array with three columns,
                                      # (modes, variation_0, variation_1)
 melody = make_melody(modes[0], modes[1:])
 events_per_cycle = np.shape(modes)[1]
@@ -272,6 +272,7 @@ piece = Piece(t, modes, fund)
 
 it = piece.get_irama_transitions()
 print(it)
+print(melody)
 # sec_last = piece.sections[-1]
 
 # print(piece.all_plucks)

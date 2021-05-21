@@ -9,45 +9,6 @@ from numpy.random import default_rng
 import itertools
 rng = default_rng()
 
-
-# def make_triads(mode, num_of_triads, fund=100, min=150, alpha=3, min_ratio=1.5):
-#     unq_lens = 0
-#     mode = np.array(mode)
-#     while np.any(unq_lens != 3):
-#         seq = h_tools.dc_alg(len(mode), 3 * num_of_triads, alpha=alpha)
-#         triads = np.array(np.split(seq, num_of_triads))
-#         unq_lens = np.array([len(set(i)) for i in triads])
-#     freqs = mode[triads] * fund
-#     freqs = np.sort(freqs)
-#     freqs = np.where(freqs < min,
-#         freqs * (2 ** np.ceil(np.log2(min/freqs))), freqs)
-#     freqs = np.where(freqs >= 2 * min,
-#         freqs / (2 ** np.floor(np.log2(freqs/min))), freqs)
-#     freqs = np.sort(freqs)
-#
-#     def condition(freq_triad):
-#         out = np.logical_or(freq_triad[1] / freq_triad[0] < min_ratio,
-#             freq_triad[2]/ freq_triad[1] < 1.3333)
-#         return out
-#
-#     for i in range(len(freqs)):
-#         init_freqs_i = freqs[i]
-#         while condition(freqs[i]):
-#             freqs[i][1] *= 2
-#             freqs[i] = np.sort(freqs[i])
-#             if np.any(freqs[i] == np.inf):
-#                 breakpoint()
-#     return [[i] for i in freqs]
-#
-#
-# mins = np.linspace(75, 300, 25)
-# mins = np.append(mins, np.linspace(300, 75, 25))
-# mins = np.expand_dims(mins, axis=1)
-# freqs = [make_triads(i, 50, min=mins) for index, i in enumerate(modes)]
-# freqs = np.concatenate(freqs)
-# json.dump(np.array(freqs), open('JSON/triads.JSON', 'w'), cls=h_tools.NpEncoder)
-#
-
 Golden = (1 + 5 ** 0.5) / 2
 class Pluck:
     """
@@ -122,7 +83,7 @@ class Pluck:
 
         base_tempo = self.base_tempo
         base_min_freq = self.base_min_freq
-        base_decay_dur = self.base_decay_dur
+        base_decay_dur = self.base_decay_dur / (Golden ** 2.5)
         base_coef = self.base_coef
         floor_nCVI = self.floor_nCVI
         base_vol = self.base_vol
@@ -181,7 +142,7 @@ class Pluck:
 
         base_tempo = self.base_tempo * Golden
         base_min_freq = self.base_min_freq * Golden
-        base_decay_dur = self.base_decay_dur / Golden
+        base_decay_dur = self.base_decay_dur / (Golden ** 2)
         base_coef = self.base_coef / Golden
         bass_nCVI = Golden ** 2 # then 4rd, 6th,
         base_vol = self.base_vol
@@ -243,7 +204,7 @@ class Pluck:
 
         base_tempo = self.base_tempo * (Golden ** 2)
         base_min_freq = self.base_min_freq * (Golden ** 2)
-        base_decay_dur = self.base_decay_dur / (Golden **2)
+        base_decay_dur = self.base_decay_dur / (Golden ** 1.5)
         base_coef = self.base_coef / (Golden ** 2)
         bass_nCVI = Golden ** 4 # then 6th,
         base_vol = self.base_vol
@@ -355,7 +316,7 @@ class Pluck:
 
         base_tempo = self.base_tempo * (Golden ** 3)
         base_min_freq = self.base_min_freq * (Golden ** 3)
-        base_decay_dur = self.base_decay_dur / (Golden **3)
+        base_decay_dur = self.base_decay_dur / Golden
         base_coef = self.base_coef / (Golden ** 3)
         bass_nCVI = Golden ** 6 # then 6th,
         base_vol = self.base_vol
@@ -463,15 +424,6 @@ class Pluck:
         return self.packets
 
 
-
-
-
-
-
-
-
-
-
     def get_delays(self, groups=2, max_del=0.2):
         """Returns array with delay times that specify how much after event time
         the three notes of the triad will be struck. Always at least one at zero
@@ -490,8 +442,6 @@ class Pluck:
             idxs = rng.choice(np.arange(3), size=2, replace=False)
         delays[idxs] = del_times
         return delays
-
-
 
 
     def registrate(self, chord, min_):
