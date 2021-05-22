@@ -370,10 +370,16 @@ def sequence_from_sample(samples, bounds):
     return seq
 
 
-def spread(init, max_ratio):
+def spread(init, max_ratio, scale='log'):
     exponent = np.clip(np.random.normal() / 3, -1, 1)
-    return init * (max_ratio ** exponent)
+    if scale == 'log':
+        return init * (max_ratio ** exponent)
+    elif scale == 'linear':
+        return init + exponent / max_ratio
 
+
+
+# print(spread(0.5, 2, scale='linear'))
 def normalize(array):
     array = np.array(array)
     return array / sum(array)
