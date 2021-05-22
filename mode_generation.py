@@ -1,4 +1,5 @@
 from harmony_tools import utils as h_tools
+from harmony_tools.utils import dc_alg_step as dc_step
 import numpy as np
 import json
 from fractions import Fraction
@@ -365,3 +366,81 @@ def make_melody(modes, variations):
         else:
             melody.append((0, 0))
     return melody
+    
+    
+class Note_Stream:
+    """For a given mode and statistical profile, generate chords of various 
+    sizes and containing notes in a weighted dc_alg manner. """
+    
+    def __init__(self, mode, fund, weight=None, chord_sizes=[2, 3, 4, 5], 
+                 cs_weight=None):
+        self.mode = mode
+        self.wt = weight
+        self.cts = None
+        self.cs = chord_sizes
+        self.cs_wt = cs_weight
+        self.cs_cts = None
+        
+    def cs_step(self):
+        cs_i, self.cs_cts = dc_step(len(self.cs), self.cs_cts, 2, self.cs_wt)
+        chord_size = self.cs[cs_i]
+        self.next_cs = chord_size
+        
+    def note_step(self):
+        self.mode_idxs = []
+        for i in range(self.next_cs):
+            mode_idx, self.cts = dc_step(len(mode), self.cts, 2, self.wt)
+            self.mode_idxs.append(mode_idx)
+        self.mode_idxs = np.array(self.mode_idxs)
+        
+    def next_chord(self, register):
+        """Register is a tuple (min, max) of frequencies"""
+        self.cs_step()
+        self.note_step()
+        chord = self.mode[self.mode_idxs] * fund
+        for i, note in enumerate(chord):
+            min_exp = np.ceil(np.log2(register[0]/note))
+            max_exp = np.floor(np.log2(register[1]/note))
+            exp_options = np.arange(min_exp, max_exp+1)
+            exp = np.random.choice(exp_options)
+            chord[i] *= 2 ** exp
+        return chord
+            
+        
+        
+        
+        
+
+def get_sub_mode(mode, num_of_pitches, weight=None):
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

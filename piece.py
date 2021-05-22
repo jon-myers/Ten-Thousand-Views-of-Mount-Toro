@@ -1,7 +1,8 @@
-from tempo_curve import Time
+# from tempo_curve import Time
+from rhythm_tools import Time
 from mode_generation import make_mode_sequence, make_melody
 import numpy as np
-from pluck import Pluck
+from instruments import Pluck
 import json
 from harmony_tools import utils as h_tools
 

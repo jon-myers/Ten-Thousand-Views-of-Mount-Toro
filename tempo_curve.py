@@ -8,6 +8,39 @@ from rhythm_tools import sequence_from_sample
 import numpy as np
 
 
+
+class StretchCurve:
+    """Like `Time`, but just for applying a curve to a duration sequence, not a 
+    whole piece. Uses half cosine interpolation to get between tempi. Finds 
+    relative location by integrating to get beats. Then normalizes back to 
+    original dur. Durs should add up to 1."""
+    
+    def __init__(self, durs, starting=1, ending=2):
+        """durs are normalized."""
+        self.start_mm = starting
+        self.end_mm = ending
+        self.durs = durs
+        # breakpoint()
+        self.starts = np.concatenate(([0], np.cumsum(self.durs)[:-1]))
+    
+    def mm(self, x):
+        """x is between 0 and 1 (1 is pi, as far as the cos is concerned)"""
+        
+        diff = self.end_mm - self.start_mm
+        mu2 = (1 - np.cos(x * np.pi)) / 2
+        return self.start_mm * (1 - mu2) + self.end_mm * mu2
+    
+    def b(self, x):
+        """Elapsed beats"""
+        return integrate(self.mm, 0, x)[0]
+        
+    def render_stretch(self):
+        new_end = self.b(1)
+        new_starts = np.array([self.b(s) / new_end for s in self.starts])
+        return new_starts
+        
+# stc = SimpleTimeCurve(np.ones(5)/5, 2, 1)
+# print(stc.render_stretch())
 # the time variable refers to the initial time frame. To refer to the actual
 # time in the final piece, as stretched to end at dur_tot, I will use `real_time`
 class Time:
@@ -170,21 +203,6 @@ class Time:
                 real_time = self.real_time_from_cycles(cycle+event)
                 self.real_time_event_map[real_time] = self.event_map[cycle][event]
 
-
-            #
-
-
-
-            # for cycle in range(self.noc):
-            #     dur = self.real_time_dur_from_cycle_event(cycle, i)
-            #     subdivs = np.floor(dur / min_dur)
-            #     if subdivs == 0:
-            #         suvdivs = 1
-            #     if subdivs > max_subdivs:
-            #         subiivs = max_subdivs
-            #         starts = rsm(subdivs)
-            # event_dur_dict[i] =
-
     def real_time_dur_from_cycle_event(self, cycle_num, event_num):
         start = self.cycle_starts[event_num] + cycle_num
         if event_num+1 == len(self.cycle_starts):
@@ -195,28 +213,3 @@ class Time:
         rt_end = self.real_time_from_cycles(end)
         dur = rt_end - rt_start
         return dur
-# test_cycle = rsm(10, 10, start_times=True)
-# print(test_cycle)
-
-# t = Time(f=0.3, noc=9)
-# t.set_cycle(7)
-# print(t.event_map[8])
-# for i in range(10):
-#     print(t.real_time_dur_from_cycle_event(i, 2))
-# print()
-# for i in range(6):
-#     print(t.real_time_dur_from_cycle_event(8, i))
-
-# real_times = [t.real_time_from_cycles(i) for i in test_cycle]
-# print(real_times)
-# out = t.time_from_beat(0.041)
-# # print(t.end)
-# # print(t.end_beats)
-# # print(t.real_time_from_cycles(1))
-# cycle_durs = rsm(20, 10)
-# cumsum = np.cumsum(cycle_durs)[:-1]
-# cycle_events = np.insert(cumsum, 0, 0)
-#
-# real_times = [t.real_time_from_cycles(i) for i in cycle_events]
-# print(real_times)
-# print(cycle_events)

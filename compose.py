@@ -1,4 +1,5 @@
-from tempo_curve import Time
+# from tempo_curve import Time
+from rhythm_tools import Time
 from rhythm_tools import rhythmic_sequence_maker as rsm
 import numpy as np
 from mode_generation import make_mode_sequence, make_melody
