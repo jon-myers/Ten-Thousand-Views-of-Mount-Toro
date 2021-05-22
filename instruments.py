@@ -47,7 +47,7 @@ class Pluck:
         if np.size(self.irama) == 2:
             if self.irama[0] == 0:
                 A = self.irama_0()
-                B = self.irama_1() 
+                B = self.irama_1()
             elif self.irama[0] == 1:
                 A = self.irama_1()
                 B = self.irama_2()
@@ -59,7 +59,7 @@ class Pluck:
             A = [i for i in A if i['start'] < self.transition_point]
             B = [i for i in B if i['start'] >= self.transition_point]
             return A + B
-                
+
         elif self.irama == 0:
             return self.irama_0()
         elif self.irama == 1:
@@ -83,7 +83,7 @@ class Pluck:
 
         base_tempo = self.base_tempo
         base_min_freq = self.base_min_freq
-        base_decay_dur = self.base_decay_dur
+        base_decay_dur = self.base_decay_dur / (Golden ** 2.5)
         base_coef = self.base_coef
         floor_nCVI = self.floor_nCVI
         base_vol = self.base_vol
@@ -113,13 +113,14 @@ class Pluck:
         if coef >= 1: coef = 0.999 # prob don't need this, but just in case
         self.packets = []
         for i in range(len(event_locs)):
+            vol_ = [spread(base_vol, 1.5, scale='linear') for i in range(3)]
             packet = {}
             packet['freqs'] = freqs[i]
             packet['dur'] = durs[i]
             packet['coef'] = coef
             packet['decay'] = decay
             packet['delays'] = delays
-            packet['vol'] = base_vol
+            packet['vol'] = vol_
             packet['start'] = event_locs[i]
             if i == len(event_locs) - 1:
                 packet['end'] = 1.0
@@ -141,7 +142,7 @@ class Pluck:
 
         base_tempo = self.base_tempo * Golden
         base_min_freq = self.base_min_freq * Golden
-        base_decay_dur = self.base_decay_dur / Golden
+        base_decay_dur = self.base_decay_dur / (Golden ** 2)
         base_coef = self.base_coef / Golden
         bass_nCVI = Golden ** 2 # then 4rd, 6th,
         base_vol = self.base_vol
@@ -171,13 +172,14 @@ class Pluck:
         vol = base_vol + ((vol_offset - 0.5) / 2)
         self.packets = []
         for i in range(len(event_locs)):
+            vol_ = [spread(vol, 2, scale='linear') for i in range(3)]
             packet = {}
             packet['freqs'] = freqs[i]
             packet['dur'] = durs[i]
             packet['coef'] = coef
             packet['decay'] = decay
             packet['delays'] = delays
-            packet['vol'] = vol
+            packet['vol'] = vol_
             packet['start'] = event_locs[i]
             if i == len(event_locs) - 1:
                 packet['end'] = 1.0
@@ -202,7 +204,7 @@ class Pluck:
 
         base_tempo = self.base_tempo * (Golden ** 2)
         base_min_freq = self.base_min_freq * (Golden ** 2)
-        base_decay_dur = self.base_decay_dur / (Golden **2)
+        base_decay_dur = self.base_decay_dur / (Golden ** 1.5)
         base_coef = self.base_coef / (Golden ** 2)
         bass_nCVI = Golden ** 4 # then 6th,
         base_vol = self.base_vol
@@ -236,15 +238,14 @@ class Pluck:
         decay_center = self.do_offset(base_decay_dur, decay_offset, subtract=1)
         decays = [spread(decay_center, 2) for i in range(num_per_rep)]
         vol_center = base_vol + ((vol_offset - 0.5) / 2)
-        vols = [vol_center + (np.random.rand() - 0.5) / 4 for i in range(num_per_rep)]
-
+        vols = [spread(vol_center, 3, scale='linear') for i in range(num_per_rep)]
+        vols = [[np.clip(spread(i, 2, scale='linear'), 0, 1) for j in range(3)] for i in vols]
         rep_delays = [delays for i in range(num_of_reps)]
         rep_freqs = [freqs for i in range(num_of_reps)]
         rep_coefs = [coefs for i in range(num_of_reps)]
         rep_decays = [decays for i in range(num_of_reps)]
         rep_vols = [vols for i in range(num_of_reps)]
         rep_durs = [jiggle_sequence(durs, 1.2) for i in range(num_of_reps)]
-        
         for gap_index in range(1, num_of_reps)[::-1]:
             gap = np.random.randint(2, dtype=bool)
             if gap:
@@ -254,7 +255,8 @@ class Pluck:
                 rep_delays.insert(gap_index, [[0, 0, 0]])
                 rep_coefs.insert(gap_index, [0.1])
                 rep_decays.insert(gap_index, [3])
-                rep_vols.insert(gap_index, [0.5])
+                rep_vols.insert(gap_index, [[0.5, 0.5, 0.5]])
+
         full_durs = np.concatenate(rep_durs)
         full_durs /= np.sum(full_durs)
         full_freqs = list(itertools.chain.from_iterable(rep_freqs))
@@ -263,6 +265,7 @@ class Pluck:
         full_coefs = np.concatenate(rep_coefs)
         full_decays = np.concatenate(rep_decays)
         full_vols = np.concatenate(rep_vols)
+        # breakpoint()
 
         full_event_locs = np.append((0), np.cumsum(full_durs)[:-1])
         start_offset = (1 / len(full_event_locs)) - self.rt_since_last / self.real_dur
@@ -273,10 +276,14 @@ class Pluck:
         size = np.size(full_event_locs)
         full_freqs.insert(0, 'Rest()')
         full_freqs = full_freqs[:size]
-        full_delays = np.concatenate(([[0, 0, 0]], full_delays))[:size]
+        fd_shape = (len(full_delays) + 1, 3)
+        full_delays = np.append([0, 0, 0], full_delays).reshape(fd_shape)[:size]
         full_coefs = np.append(0.1, full_coefs)[:size]
         full_decays = np.append(3, full_decays)[:size]
-        full_vols = np.append(0.5, full_vols)[:size]
+        v_shape = (len(full_vols) + 1, 3)
+        full_vols = np.append([0.5, 0.5, 0.5], full_vols).reshape(v_shape)[:size]
+
+        # breakpoint()
         self.packets = []
         for i in range(len(full_event_locs)):
             packet = {}
@@ -309,7 +316,7 @@ class Pluck:
 
         base_tempo = self.base_tempo * (Golden ** 3)
         base_min_freq = self.base_min_freq * (Golden ** 3)
-        base_decay_dur = self.base_decay_dur / (Golden **3)
+        base_decay_dur = self.base_decay_dur / Golden
         base_coef = self.base_coef / (Golden ** 3)
         bass_nCVI = Golden ** 6 # then 6th,
         base_vol = self.base_vol
@@ -353,7 +360,8 @@ class Pluck:
         decay_center = self.do_offset(base_decay_dur, decay_offset, subtract=1)
         decays = [spread(decay_center, 2) for i in range(num_per_rep)]
         vol_center = base_vol + ((vol_offset - 0.5) / 2)
-        vols = [vol_center + (np.random.rand() - 0.5) / 2 for i in range(num_per_rep)]
+        vols = [spread(vol_center, 4, scale='linear') for i in range(num_per_rep)]
+        vols = [[np.clip(spread(i, 2, scale='linear'), 0, 1) for j in range(3)] for i in vols]
 
 
         rep_delays = [delays for i in range(num_of_reps)]
@@ -372,7 +380,7 @@ class Pluck:
                 rep_delays.insert(gap_index, [[0, 0, 0]])
                 rep_coefs.insert(gap_index, [0.1])
                 rep_decays.insert(gap_index, [3])
-                rep_vols.insert(gap_index, [0.5])
+                rep_vols.insert(gap_index, [[0.5, 0.5, 0.5]])
 
         full_durs = np.concatenate(rep_durs)
         full_durs /= np.sum(full_durs)
@@ -391,10 +399,12 @@ class Pluck:
         size = np.size(full_event_locs)
         full_freqs.insert(0, 'Rest()')
         full_freqs = full_freqs[:size]
-        full_delays = np.concatenate(([[0, 0, 0]], full_delays))[:size]
+        fd_shape = (len(full_delays) + 1, 3)
+        full_delays = np.append([0, 0, 0], full_delays).reshape(fd_shape)[:size]
         full_coefs = np.append(0.1, full_coefs)[:size]
         full_decays = np.append(3, full_decays)[:size]
-        full_vols = np.append(0.5, full_vols)[:size]
+        v_shape = (len(full_vols) + 1, 3)
+        full_vols = np.append([0.5, 0.5, 0.5], full_vols).reshape(v_shape)[:size]
         self.packets = []
         for i in range(len(full_event_locs)):
             packet = {}
@@ -409,7 +419,7 @@ class Pluck:
                 packet['end'] = 1.0
             else:
                 packet['end'] = full_event_locs[i+1]
-                
+
             self.packets.append(packet)
         return self.packets
 
