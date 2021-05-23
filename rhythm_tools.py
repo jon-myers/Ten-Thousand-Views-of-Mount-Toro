@@ -117,7 +117,8 @@ class Time:
         times of the sections within a cycle. Probably generated from `rhythmic
         sequence maker`, with `start_times` set to True."""
         self.nos = nos
-        self.cycle_durs, self.cycle_starts = rsm(nos, nCVI, start_times='both')
+        self.cycle_durs, self.cycle_starts = rhythmic_sequence_maker(nos, nCVI, 
+                                                             start_times='both')
         self.cycle_ends = np.append(self.cycle_starts[1:], [1])
         min_dur = 7
         max_subdivs = 5
@@ -142,7 +143,7 @@ class Time:
                     starts = [0]
                     bounds = [(0, 1)]
                 else:
-                    starts = rsm(j, nCVI, start_times=True)
+                    starts = rhythmic_sequence_maker(j, nCVI, start_times=True)
                     ends = np.append(starts[1:], 1)
                     bounds = [(starts[i], ends[i]) for i in range(len(starts))]
 
@@ -232,13 +233,13 @@ def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times
     else:
         return section_durs
 
-def phrase_compiler(notes_per_seg, dur_per_seg, nCVI):
-    full_seq = np.array([])
-    for seg in range(len(notes_per_seg)):
-        noe = notes_per_seg[seg]
-        sequence = rhythmic_sequence_maker(noe, nCVI) * dur_per_seg[seg]
-        full_seq = np.concatenate((full_seq, sequence))
-    return full_seq
+# def phrase_compiler(notes_per_seg, dur_per_seg, nCVI):
+#     full_seq = np.array([])
+#     for seg in range(len(notes_per_seg)):
+#         noe = notes_per_seg[seg]
+#         sequence = rhythmic_sequence_maker(noe, nCVI) * dur_per_seg[seg]
+#         full_seq = np.concatenate((full_seq, sequence))
+#     return full_seq
 
 class Density_Curve:
     

@@ -2,10 +2,10 @@
 from rhythm_tools import Time
 from mode_generation import make_mode_sequence, make_melody
 import numpy as np
-from instruments import Pluck
+from instruments import Pluck, Klank
 import json
 from harmony_tools import utils as h_tools
-
+import pickle
 
 class Piece:
 
@@ -138,15 +138,15 @@ class Section:
         self.time = self.piece.time
         self.irama = []
         self.instances = []
+        self.cy_start = self.time.cycle_starts[self.section_num]
+        self.cy_end = self.time.cycle_ends[self.section_num]
 
         # self.cycles is assigned in Piece __init__, line 14
 
 
     def real_dur(self, cycle_num):
-        cy_start = self.time.cycle_starts[self.section_num] + cycle_num
-        cy_end = self.time.cycle_ends[self.section_num] + cycle_num
-        real_start = self.time.real_time_from_cycles(cy_start)
-        real_end = self.time.real_time_from_cycles(cy_end)
+        real_start = self.time.real_time_from_cycles(self.cy_start+cycle_num)
+        real_end = self.time.real_time_from_cycles(self.cy_end+cycle_num)
         real_dur = real_end - real_start
         return real_dur
 
@@ -248,32 +248,34 @@ class Instance:
                 packet['rt_dur'] = rt_end - rt_start
             self.plucks.append(packets)
 
+def build():
+    noc = 7
+    dur_tot = 29*60
+    fund = 150
+    modes = make_mode_sequence((10, 20)) 
+    melody = make_melody(modes[0], modes[1:])
+    events_per_cycle = np.shape(modes)[1]
+    t = Time(dur_tot=dur_tot, f=0.5, noc=noc)
+    t.set_cycle(len(modes[0]))
+    piece = Piece(t, modes, fund)
+    return piece
+# piece = build()
 
 
 
 
 
 
+# pickle.dump(piece, open('pickles/piece.p', 'wb'))
+# klank = Klank(piece, 0)
+# print(klank.cy_start, klank.cy_end, klank.cy_dur)
+# klank.make_voice()
 
 
 
-noc = 7
-dur_tot = 29*60
-fund = 150
-modes = make_mode_sequence((10, 20)) # a single np array with three columns,
-                                     # (modes, variation_0, variation_1)
-melody = make_melody(modes[0], modes[1:])
-events_per_cycle = np.shape(modes)[1]
-t = Time(dur_tot=dur_tot, f=0.5, noc=noc)
-t.set_cycle(len(modes[0]))
-
-# print(t.event_map[0])
-# print(len(t.event_map.keys()))
-piece = Piece(t, modes, fund)
-
-it = piece.get_irama_transitions()
-print(it)
-print(melody)
+# it = piece.get_irama_transitions()
+# print(it)
+# print(melody)
 # sec_last = piece.sections[-1]
 
 # print(piece.all_plucks)

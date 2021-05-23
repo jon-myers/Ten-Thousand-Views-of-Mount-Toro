@@ -1,7 +1,7 @@
 import json
 from harmony_tools import utils as h_tools
 from rhythm_tools import rhythmic_sequence_maker as rsm
-from rhythm_tools import jiggle_sequence, spread
+from rhythm_tools import jiggle_sequence, spread, phrase_compiler
 import numpy as np
 import numpy_indexed as npi
 modes = json.load(open('JSON/modes_and_variations.JSON', 'rb'))[0]
@@ -484,46 +484,123 @@ class Pluck:
 class Klank:
     
     def __init__(self, piece, irama): 
+        self.piece = piece
+        self.irama = irama
+        self.assign_frame_timings()
+        
+        if self.irama == 0:
+            self.rt_td = 3
+            self.tot_events = self.rt_dur * self.rt_td 
+
+        
+        
+    def assign_frame_timings(self):
+        trans = self.piece.get_irama_transitions()
+        fine_tuning = np.random.random(size=3)
+        if self.irama == 0:
+            start = (0, 0, 0)
+        else: 
+            start = trans[self.irama-1]
+            start = (start[0], start[1], fine_tuning[self.irama-1])
+        if self.irama == 3:
+            end = (self.piece.noc+1, 0, 0)
+        else:
+            end = trans[self.irama]
+            end = (end[0], end[1], fine_tuning[self.irama])
+            
+        start_section = self.piece.sections[start[1]]
+        ss_beginning = start_section.cy_start
+        ss_ending = start_section.cy_end
+        ss_dur = ss_ending - ss_beginning
+        
+        end_section = self.piece.sections[end[1]]
+        es_beginning = end_section.cy_start
+        es_ending = end_section.cy_end
+        es_dur = es_ending - es_beginning
+        
+        self.cy_start = start[0] + ss_beginning + ss_dur * start[2]
+        self.cy_end = end[0] + es_ending + es_dur * end[2]
+        self.cy_dur = self.cy_end - self.cy_start
+        
+        self.rt_start = self.piece.time.real_time_from_cycles(self.cy_start)
+        self.rt_end = self.piece.time.real_time_from_cycles(self.cy_end)
+        self.rt_dur = self.rt_end - self.rt_start
+        
+    def make_voice(self):
+        rest_ratio = 0.15 # proportion of klank that consists of rests
+        dur_range = (3, 10)
+        rt_durs = []
+        remaining = self.rt_dur 
+        while sum(rt_durs) < self.rt_dur * (1 - rest_ratio):
+            remaining = self.rt_dur * (1 - rest_ratio) - sum(rt_durs)
+            if remaining >= dur_range[0] and remaining < dur_range[1]:
+                next = remaining
+            elif remaining < dur_range[0]:
+                rt_durs[-1] += remaining
+                break
+            else:
+                next = np.random.uniform(*dur_range)
+            rt_durs.append(next)
+        cy_rests = rsm(len(rt_durs), 60) * rest_ratio * self.cy_dur
+        # phrase_durs = []
+        # phrase_starts = []
+        cy_time = 0
+        packets = []
+        for i, rt_dur in enumerate(rt_durs):
+            dc_durs, dc_edges = self.make_pc_edges(rt_dur)
+            subdivs = np.random.choice([3, 4, 5, 6])
+            phrase = phrase_compiler(dc_durs, dc_edges, subdivs, 24, 35)
+            cy_phrase_durs = phrase * self.cy_dur / self.rt_dur
+            cy_phrase_starts = cy_time + np.concatenate(([0], np.cumsum(cy_phrase_durs)[:-1]))
+            cy_time += rt_dur * self.cy_dur / self.rt_dur
+            # phrase_durs.append(cy_phrase_durs)
+            # phrase_starts.append(cy_phrase_starts)
+            for j in range(len(phrase)):
+                packet = {}
+                packet['cy_start'] = cy_phrase_starts[j]
+                packet['cy_dur'] = cy_phrase_durs[j]
+                packet['type'] = 'note'
+                packets.append(packet)
+            packet = {}
+            packet['cy_start'] = cy_time
+            packet['cy_dur'] = cy_rests[i]
+            packet['type'] = 'rest'
+            packets.append(packet)
+            cy_time += cy_rests[i]
+        
+        
+            
+    
+    def make_pc_edges(self, rt_dur):
+        # for irama 1, shape supplied to phrase compiler should be either 
+        # down-up-down, down-up-middle, middle-up-down
+        midpoint = np.random.uniform(0.25, 0.75)
+        dc_durs = np.array([midpoint, 1-midpoint]) * rt_dur
+        down = np.random.uniform(1.5, 3)
+        middle = np.random.uniform(3, 4.5)
+        up = np.random.uniform(4.5, 6)
+        profiles = [[down, up, down], [down, up, middle], [middle, up, down]]
+        dc_edges = profiles[np.random.choice(np.arange(3))]
+        return dc_durs, dc_edges
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  

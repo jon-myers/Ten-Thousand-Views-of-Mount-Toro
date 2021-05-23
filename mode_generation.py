@@ -5,6 +5,9 @@ import json
 from fractions import Fraction
 import math
 import numpy_indexed as npi
+from numpy.random import default_rng
+rng = default_rng()
+Golden = (1 + 5 ** 0.5) / 2
 
 def get_aggregate_hd(mode, trial):
     hd = 0
@@ -409,38 +412,15 @@ class Note_Stream:
         
         
         
-        
 
 def get_sub_mode(mode, num_of_pitches, weight=None):
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    if np.all(weight==None):
+        weight = 1 / (Golden ** (np.arange(len(mode))/2))
+    weight /= np.sum(weight)
+    sub_mode = rng.choice(mode, num_of_pitches, p=weight, replace=False)
+    sub_mode = np.sort(sub_mode)
+    return sub_mode  
+
+
     
     
