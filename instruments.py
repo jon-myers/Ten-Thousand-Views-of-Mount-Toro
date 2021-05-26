@@ -7,6 +7,7 @@ import numpy_indexed as npi
 modes = json.load(open('JSON/modes_and_variations.JSON', 'rb'))[0]
 from numpy.random import default_rng
 import itertools
+from mode_generation import Note_Stream, get_sub_mode
 rng = default_rng()
 Golden = (1 + 5 ** 0.5) / 2
 
@@ -487,6 +488,7 @@ class Klank:
         self.piece = piece
         self.irama = irama
         self.assign_frame_timings()
+        self.current_mode = None
         
         if self.irama == 0:
             self.rt_td = 3
@@ -526,7 +528,8 @@ class Klank:
         self.rt_end = self.piece.time.real_time_from_cycles(self.cy_end)
         self.rt_dur = self.rt_end - self.rt_start
         
-    def make_voice(self):
+    def make_packets(self):
+        """Just the temporality. Add notes and other stats later."""
         rest_ratio = 0.15 # proportion of klank that consists of rests
         dur_range = (3, 10)
         rt_durs = []
@@ -545,7 +548,7 @@ class Klank:
         # phrase_durs = []
         # phrase_starts = []
         cy_time = 0
-        packets = []
+        self.packets = []
         for i, rt_dur in enumerate(rt_durs):
             dc_durs, dc_edges = self.make_pc_edges(rt_dur)
             subdivs = np.random.choice([3, 4, 5, 6])
@@ -560,14 +563,70 @@ class Klank:
                 packet['cy_start'] = cy_phrase_starts[j]
                 packet['cy_dur'] = cy_phrase_durs[j]
                 packet['type'] = 'note'
-                packets.append(packet)
+                packet['phrase_num'] = i
+                self.packets.append(packet)
             packet = {}
             packet['cy_start'] = cy_time
             packet['cy_dur'] = cy_rests[i]
             packet['type'] = 'rest'
-            packets.append(packet)
+            packet['phrase_num'] = i
+            self.packets.append(packet)
             cy_time += cy_rests[i]
         
+            
+    def add_notes(self):
+        outer_ct = 0
+        inner_ct = 0
+        current_mode = None
+        grouped_packets = []
+        for packet in self.packets:
+            # start = packet['cy_start']
+            # cycle = (start // 1).astype(int)
+            # event_map = self.piece.cycles[cycle].event_map
+            # em_starts = np.array(list(event_map.keys()))
+            # event_idx = np.nonzero(start >= em_starts)[0][-1]
+            # key = list(event_map.keys())[event_idx]
+            # event = event_map[key]
+            # 
+            event = self.get_event(packet)
+            # mode = self.piece.modes[var, event['mode']]
+            if current_mode != (event['mode'], event['variation']):
+                # sub_mode = get_sub_mode(mode, 5)
+                # packet['submode'] = sub_mode
+                current_mode = (event['mode'], event['variation'])
+                if outer_ct != 0:
+                    grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
+                    inner_ct = 0
+            outer_ct += 1
+            inner_ct +=1
+            # think about: would this work better if we grouped up the event map
+            # packets by places where mode transitions or phrase_num transitions? 
+        grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
+        for gp in grouped_packets:
+            event = self.get_event(gp[0])
+            mode = self.piece.modes[event['variation'], event['mode']]
+            mode_size = np.random.choice([4, 5, 6, 7])
+            sub_mode = get_sub_mode(mode, mode_size)
+            cs = np.arange(2, len(sub_mode))
+            ns = Note_Stream(sub_mode, self.piece.fund, chord_sizes=cs)
+            register = (150, 600) # just for now
+            for packet in gp:
+                if packet['type'] == 'note':
+                    packet['freqs'] = ns.next_chord(register)
+                else:
+                    packet['freqs'] = [100]
+        # breakpoint()
+        # now assign the sub mode to each 
+        
+    def get_event(self, packet):
+        start = packet['cy_start']
+        cycle = (start // 1).astype(int)
+        event_map = self.piece.cycles[cycle].event_map
+        em_starts = np.array(list(event_map.keys()))
+        event_idx = np.nonzero(start >= em_starts)[0][-1]
+        key = list(event_map.keys())[event_idx]
+        event = event_map[key]
+        return event
         
             
     

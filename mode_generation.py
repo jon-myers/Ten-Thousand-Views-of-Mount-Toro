@@ -378,6 +378,7 @@ class Note_Stream:
     def __init__(self, mode, fund, weight=None, chord_sizes=[2, 3, 4, 5], 
                  cs_weight=None):
         self.mode = mode
+        self.fund = fund
         self.wt = weight
         self.cts = None
         self.cs = chord_sizes
@@ -392,15 +393,19 @@ class Note_Stream:
     def note_step(self):
         self.mode_idxs = []
         for i in range(self.next_cs):
-            mode_idx, self.cts = dc_step(len(mode), self.cts, 2, self.wt)
+            mode_idx, self.cts = dc_step(len(self.mode), self.cts, 2, self.wt)
+            while mode_idx in self.mode_idxs:
+                mode_idx, self.cts = dc_step(len(self.mode), self.cts, 2, self.wt)
             self.mode_idxs.append(mode_idx)
+        if len(self.mode_idxs) > len(list(set(self.mode_idxs))):
+            breakpoint()
         self.mode_idxs = np.array(self.mode_idxs)
         
     def next_chord(self, register):
         """Register is a tuple (min, max) of frequencies"""
         self.cs_step()
         self.note_step()
-        chord = self.mode[self.mode_idxs] * fund
+        chord = self.mode[self.mode_idxs] * self.fund
         for i, note in enumerate(chord):
             min_exp = np.ceil(np.log2(register[0]/note))
             max_exp = np.floor(np.log2(register[1]/note))
