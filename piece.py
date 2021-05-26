@@ -31,7 +31,7 @@ class Piece:
                 instance.make_plucks()
         self.compile_plucks()
         self.format_plucks_JSON()
-
+        self.make_klanks()
         # print(self.offsets)
 
     def assign_params(self):
@@ -87,6 +87,14 @@ class Piece:
                     self.irama_transitions.append((c, s))
         return self.irama_transitions
 
+    def make_klanks(self):
+        self.klank_packets = []
+        # start with just the first one, for irama 0
+        for i in range(4):
+            klank = Klank(self, 0)
+            self.klank_packets += klank.packets
+        file = open('json/klank_packets.JSON', 'w')
+        json.dump(self.klank_packets, file, cls=h_tools.NpEncoder)
 
 
 class Cycle:
@@ -252,16 +260,16 @@ def build():
     noc = 7
     dur_tot = 29*60
     fund = 150
-    modes = make_mode_sequence((10, 20)) 
+    modes = make_mode_sequence((10, 20))
     melody = make_melody(modes[0], modes[1:])
     events_per_cycle = np.shape(modes)[1]
     t = Time(dur_tot=dur_tot, f=0.5, noc=noc)
     t.set_cycle(len(modes[0]))
     piece = Piece(t, modes, fund)
     return piece
-# piece = build()
+piece = build()
 
-
+# breakpoint()
 
 
 

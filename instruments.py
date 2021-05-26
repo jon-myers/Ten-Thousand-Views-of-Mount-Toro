@@ -483,25 +483,30 @@ class Pluck:
 
 
 class Klank:
-    
-    def __init__(self, piece, irama): 
+
+    def __init__(self, piece, irama):
         self.piece = piece
         self.irama = irama
         self.assign_frame_timings()
         self.current_mode = None
-        
+
         if self.irama == 0:
             self.rt_td = 3
-            self.tot_events = self.rt_dur * self.rt_td 
+            self.tot_events = self.rt_dur * self.rt_td
 
-        
-        
+        self.make_packets()
+        self.add_notes()
+        self.add_decays()
+        self.add_real_times()
+
+
+
     def assign_frame_timings(self):
         trans = self.piece.get_irama_transitions()
         fine_tuning = np.random.random(size=3)
         if self.irama == 0:
             start = (0, 0, 0)
-        else: 
+        else:
             start = trans[self.irama-1]
             start = (start[0], start[1], fine_tuning[self.irama-1])
         if self.irama == 3:
@@ -509,31 +514,31 @@ class Klank:
         else:
             end = trans[self.irama]
             end = (end[0], end[1], fine_tuning[self.irama])
-            
+
         start_section = self.piece.sections[start[1]]
         ss_beginning = start_section.cy_start
         ss_ending = start_section.cy_end
         ss_dur = ss_ending - ss_beginning
-        
+
         end_section = self.piece.sections[end[1]]
         es_beginning = end_section.cy_start
         es_ending = end_section.cy_end
         es_dur = es_ending - es_beginning
-        
+
         self.cy_start = start[0] + ss_beginning + ss_dur * start[2]
         self.cy_end = end[0] + es_ending + es_dur * end[2]
         self.cy_dur = self.cy_end - self.cy_start
-        
+
         self.rt_start = self.piece.time.real_time_from_cycles(self.cy_start)
         self.rt_end = self.piece.time.real_time_from_cycles(self.cy_end)
         self.rt_dur = self.rt_end - self.rt_start
-        
+
     def make_packets(self):
         """Just the temporality. Add notes and other stats later."""
         rest_ratio = 0.15 # proportion of klank that consists of rests
         dur_range = (3, 10)
         rt_durs = []
-        remaining = self.rt_dur 
+        remaining = self.rt_dur
         while sum(rt_durs) < self.rt_dur * (1 - rest_ratio):
             remaining = self.rt_dur * (1 - rest_ratio) - sum(rt_durs)
             if remaining >= dur_range[0] and remaining < dur_range[1]:
@@ -572,22 +577,15 @@ class Klank:
             packet['phrase_num'] = i
             self.packets.append(packet)
             cy_time += cy_rests[i]
-        
-            
+
+
     def add_notes(self):
         outer_ct = 0
         inner_ct = 0
         current_mode = None
-        grouped_packets = []
+        self.grouped_packets = []
         for packet in self.packets:
-            # start = packet['cy_start']
-            # cycle = (start // 1).astype(int)
-            # event_map = self.piece.cycles[cycle].event_map
-            # em_starts = np.array(list(event_map.keys()))
-            # event_idx = np.nonzero(start >= em_starts)[0][-1]
-            # key = list(event_map.keys())[event_idx]
-            # event = event_map[key]
-            # 
+
             event = self.get_event(packet)
             # mode = self.piece.modes[var, event['mode']]
             if current_mode != (event['mode'], event['variation']):
@@ -595,29 +593,39 @@ class Klank:
                 # packet['submode'] = sub_mode
                 current_mode = (event['mode'], event['variation'])
                 if outer_ct != 0:
-                    grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
+                    self.grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
                     inner_ct = 0
             outer_ct += 1
             inner_ct +=1
             # think about: would this work better if we grouped up the event map
-            # packets by places where mode transitions or phrase_num transitions? 
-        grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
-        for gp in grouped_packets:
+            # packets by places where mode transitions or phrase_num transitions?
+        self.grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
+        for gp in self.grouped_packets:
             event = self.get_event(gp[0])
             mode = self.piece.modes[event['variation'], event['mode']]
             mode_size = np.random.choice([4, 5, 6, 7])
             sub_mode = get_sub_mode(mode, mode_size)
             cs = np.arange(2, len(sub_mode))
             ns = Note_Stream(sub_mode, self.piece.fund, chord_sizes=cs)
-            register = (150, 600) # just for now
+            register = (75, 1000) # just for now
             for packet in gp:
                 if packet['type'] == 'note':
                     packet['freqs'] = ns.next_chord(register)
                 else:
                     packet['freqs'] = [100]
         # breakpoint()
-        # now assign the sub mode to each 
-        
+        # now assign the sub mode to each
+
+
+    def add_decays(self, prop=4):
+        #for a start, just have random delays, less than total dur.
+        for packet in self.packets:
+            dur = packet['cy_dur']
+            # decays = (rng.random(np.size(packet['freqs'])) * 0.5 + 0.5) * max_prop * dur
+            decays = np.ones(np.size(packet['freqs'])) * dur * prop
+            decays = np.array([spread(i, 2.0) for i in decays])
+            packet['cy_decays'] = decays
+
     def get_event(self, packet):
         start = packet['cy_start']
         cycle = (start // 1).astype(int)
@@ -627,11 +635,32 @@ class Klank:
         key = list(event_map.keys())[event_idx]
         event = event_map[key]
         return event
-        
-            
-    
+
+    def add_real_times(self):
+        time = self.piece.time
+        for packet in self.packets:
+            cy_start = packet['cy_start']
+            cy_end = cy_start + packet['cy_dur']
+            rt_start = time.real_time_from_cycles(cy_start)
+            rt_end = time.real_time_from_cycles(cy_end)
+            rt_dur = rt_end - rt_start
+            packet['rt_start'] = rt_start
+            packet['rt_dur'] = rt_dur
+            cy_dec_ends = packet['cy_decays'] + cy_start
+            rt_dec_ends = [time.real_time_from_cycles(i) for i in cy_dec_ends]
+            rt_dec_ends = np.array(rt_dec_ends)
+            rt_dec_durs = rt_dec_ends - rt_start
+            packet['rt_decays'] = rt_dec_durs
+
+
+        # breakpoint()
+
+
+
+
+
     def make_pc_edges(self, rt_dur):
-        # for irama 1, shape supplied to phrase compiler should be either 
+        # for irama 1, shape supplied to phrase compiler should be either
         # down-up-down, down-up-middle, middle-up-down
         midpoint = np.random.uniform(0.25, 0.75)
         dc_durs = np.array([midpoint, 1-midpoint]) * rt_dur
@@ -641,25 +670,6 @@ class Klank:
         profiles = [[down, up, down], [down, up, middle], [middle, up, down]]
         dc_edges = profiles[np.random.choice(np.arange(3))]
         return dc_durs, dc_edges
-        
-        
-        
 
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+    def save_as_json(self, path):
+        json.dump(self.packets, open(path, 'w'), cls=h_tools.NpEncoder)

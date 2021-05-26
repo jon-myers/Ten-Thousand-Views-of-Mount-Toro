@@ -60,7 +60,7 @@ class Time:
         if beat == 0:
             return 0
         else:
-            return fsolve(lambda x: self.b(x) - beat, 0.01)[0]
+            return fsolve(lambda x: self.b(x) - beat, 0.00001)[0]
 
     def cycles_from_beats(self, beat):
         """Converts a given location in beats to the location in cycles."""
@@ -117,7 +117,7 @@ class Time:
         times of the sections within a cycle. Probably generated from `rhythmic
         sequence maker`, with `start_times` set to True."""
         self.nos = nos
-        self.cycle_durs, self.cycle_starts = rhythmic_sequence_maker(nos, nCVI, 
+        self.cycle_durs, self.cycle_starts = rhythmic_sequence_maker(nos, nCVI,
                                                              start_times='both')
         self.cycle_ends = np.append(self.cycle_starts[1:], [1])
         min_dur = 7
@@ -157,7 +157,7 @@ class Time:
                 upper_lim = np.floor(dur / min_dur)
                 if upper_lim > 1:
                     subdivs = np.random.choice(np.arange(1, np.floor(dur / min_dur)))
-                else: 
+                else:
                     subdivs = 1
                 if subdivs > max_subdivs:
                     subdivs = max_subdivs
@@ -242,21 +242,21 @@ def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times
 #     return full_seq
 
 class Density_Curve:
-    
+
     def __init__(self, durs, edges):
-        
+
         """durs should add to one"""
         self.durs = durs
         self.edges = edges
         self.starts = np.concatenate(([0], np.cumsum(self.durs)[:-1]))
-        
+
     def value(self, x):
         seg = np.where(x >= self.starts)[0][-1]
         prop = (x - self.starts[seg]) / self.durs[seg]
         mu2 = (1 - np.cos(prop * np.pi)) / 2
         out = self.edges[seg] * (1 - mu2) + self.edges[seg+1] * mu2
         return out
-        
+
     def area(self, x0, x1):
         """area under curve"""
         return integrate(self.value, x0, x1)[0]
@@ -272,9 +272,9 @@ def phrase_compiler(dc_durs, dc_edges, nos, frame_nCVI, nCVI):
         rs = rhythmic_sequence_maker(sizes[s], nCVI) * durs[s]
         segs = np.concatenate((segs, rs))
     return segs
-    
-    
-    
+
+
+
 
 # dc = Density_Curve([4, 8], [2, 13, 5])
 # vals = np.linspace(0, 1, 100)
@@ -282,19 +282,19 @@ def phrase_compiler(dc_durs, dc_edges, nos, frame_nCVI, nCVI):
 # area = dc.area_under_curve(0, 3)[0]
 # print(area)
 # phrase = phrase_compiler([5, 5, 5], [2, 13, 2, 6], 20, 30, 50)
-# 
-# from matplotlib import pyplot as plt 
-# real_cumsum = np.concatenate(([0], np.cumsum(phrase)[:-1]))       
+#
+# from matplotlib import pyplot as plt
+# real_cumsum = np.concatenate(([0], np.cumsum(phrase)[:-1]))
 # plt.bar(real_cumsum, phrase)
-# 
+#
 # plt.show()
 
 
 # fs = phrase_compiler([10, 10, 10, 10, 10], [4, 3, 2, 3, 4], 50)
 # plt.bar(np.arange(len(fs)), fs)
 # plt.show()
-# print(fs)    
-        
+# print(fs)
+
 
 def easy_midi_generator(notes, file_name, midi_inst_name):
     notes = sorted(notes, key=(lambda x: x[1]))
@@ -387,5 +387,3 @@ def normalize(array):
 
 def jiggle_sequence(sequence, spd):
     return normalize(np.array([spread(i, spd) for i in sequence]))
-    
-    
