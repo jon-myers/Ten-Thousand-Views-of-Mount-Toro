@@ -489,6 +489,8 @@ class Klank:
         self.irama = irama
         self.assign_frame_timings()
         self.current_mode = None
+        self.levels = np.arange(1, 5) / 5
+        self.pan_pos = np.arange(-3, 4) / 4
 
         if self.irama == 0:
             self.rt_td = 3
@@ -496,7 +498,7 @@ class Klank:
 
         self.make_packets()
         self.add_notes()
-        self.add_decays()
+        self.add_spec()
         self.add_real_times()
 
 
@@ -607,24 +609,63 @@ class Klank:
             sub_mode = get_sub_mode(mode, mode_size)
             cs = np.arange(2, len(sub_mode))
             ns = Note_Stream(sub_mode, self.piece.fund, chord_sizes=cs)
-            register = (75, 1000) # just for now
+            register = (100, 500) # just for now
+            reg_min = 75 * 2 ** np.random.uniform(0, 1.5)
+            reg_max = 566 * 2 ** np.random.uniform(0, 1.5)
             for packet in gp:
+                
+                
                 if packet['type'] == 'note':
-                    packet['freqs'] = ns.next_chord(register)
+                    packet['freqs'] = ns.next_chord((reg_min, reg_max))
                 else:
                     packet['freqs'] = [100]
         # breakpoint()
         # now assign the sub mode to each
 
 
-    def add_decays(self, prop=4):
+    def add_spec(self, prop=4, amp=0.5):
+        """adds decay times and amp levels for Klank supercollider Ugen. """
         #for a start, just have random delays, less than total dur.
-        for packet in self.packets:
-            dur = packet['cy_dur']
-            # decays = (rng.random(np.size(packet['freqs'])) * 0.5 + 0.5) * max_prop * dur
-            decays = np.ones(np.size(packet['freqs'])) * dur * prop
-            decays = np.array([spread(i, 2.0) for i in decays])
-            packet['cy_decays'] = decays
+        levels = h_tools.dc_alg(len(self.levels), len(self.grouped_packets))
+        levels = self.levels[levels]
+        
+        pan_pos = h_tools.dc_alg(len(self.pan_pos), len(self.grouped_packets))
+        pan_pos = self.pan_pos[pan_pos]
+        
+        for i, gp in enumerate(self.grouped_packets):
+            this_prop = spread(prop, 2)
+            pan_gamut_size = np.random.choice(np.arange(4, 10))
+            pan_gamut = np.random.random(size=pan_gamut_size) * 2 - 1
+            pans = pan_gamut[h_tools.dc_alg(len(pan_gamut), len(gp))]
+            transient_dur = spread(0.01, 10)
+            transient_curve = spread(0, 4, 'linear')
+            for p, packet in enumerate(gp):
+                dur = packet['cy_dur']
+                decays = np.ones(np.size(packet['freqs'])) * dur * spread(this_prop, 2)
+                decays = np.array([spread(i, 2.0) for i in decays])
+                packet['cy_decays'] = decays
+                
+                amp = levels[i]
+                amps = np.ones(np.size(packet['freqs'])) * spread(levels[i], 3)
+                amps = np.clip(amps, 0, 1)
+                amps = np.array([spread(i, 2.0) for i in amps])
+                amps = np.clip(amps, 0, 1)
+                packet['amps'] = amps
+                packet['pan'] = pans[p]
+                packet['transient_dur'] = spread(transient_dur, 4)
+                packet['transient_curve'] = spread(transient_curve, 2, 'linear')
+                
+                
+                    
+        # for packet in self.packets:
+        #     dur = packet['cy_dur']
+        #     decays = np.ones(np.size(packet['freqs'])) * dur * prop
+        #     # decays = (rng.random(np.size(packet['freqs'])) * 0.5 + 0.5) * max_prop * dur
+        #     decays = np.ones(np.size(packet['freqs'])) * dur * prop
+        #     decays = np.array([spread(i, 2.0) for i in decays])
+        #     packet['cy_decays'] = decays
+        # 
+    # def add_pan(self, ):
 
     def get_event(self, packet):
         start = packet['cy_start']

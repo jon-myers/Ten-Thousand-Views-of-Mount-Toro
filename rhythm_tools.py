@@ -371,12 +371,16 @@ def sequence_from_sample(samples, bounds):
     return seq
 
 
-def spread(init, max_ratio, scale='log'):
+def spread(init, max_ratio, scale='log', func=None):
     exponent = np.clip(np.random.normal() / 3, -1, 1)
     if scale == 'log':
         return init * (max_ratio ** exponent)
     elif scale == 'linear':
-        return init + exponent / max_ratio
+        out = init + exponent * max_ratio
+        if func != None and np.abs(init-out) > max_ratio:
+            
+            func()
+        return out
 
 
 

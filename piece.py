@@ -260,7 +260,7 @@ def build():
     noc = 7
     dur_tot = 29*60
     fund = 150
-    modes = make_mode_sequence((10, 20))
+    modes = make_mode_sequence((20, 30))
     melody = make_melody(modes[0], modes[1:])
     events_per_cycle = np.shape(modes)[1]
     t = Time(dur_tot=dur_tot, f=0.5, noc=noc)
