@@ -332,9 +332,9 @@ def make_mode_sequence(size_lims=(6, 30), alpha=4):
     modes = np.array(modes) * mult
     var_0 = np.array(alt_modes)[:,0] * mult
     var_1 = np.array(alt_modes)[:, 1] * mult
-    
 
-    concat_modes = np.array((modes, var_0, var_1)) 
+
+    concat_modes = np.array((modes, var_0, var_1))
     return concat_modes
 
 
@@ -369,13 +369,13 @@ def make_melody(modes, variations):
         else:
             melody.append((0, 0))
     return melody
-    
-    
+
+
 class Note_Stream:
-    """For a given mode and statistical profile, generate chords of various 
+    """For a given mode and statistical profile, generate chords of various
     sizes and containing notes in a weighted dc_alg manner. """
-    
-    def __init__(self, mode, fund, weight=None, chord_sizes=[2, 3, 4, 5], 
+
+    def __init__(self, mode, fund, weight=None, chord_sizes=[2, 3, 4, 5],
                  cs_weight=None):
         self.mode = mode
         self.fund = fund
@@ -384,12 +384,12 @@ class Note_Stream:
         self.cs = chord_sizes
         self.cs_wt = cs_weight
         self.cs_cts = None
-        
+
     def cs_step(self):
         cs_i, self.cs_cts = dc_step(len(self.cs), self.cs_cts, 2, self.cs_wt)
         chord_size = self.cs[cs_i]
         self.next_cs = chord_size
-        
+
     def note_step(self):
         self.mode_idxs = []
         for i in range(self.next_cs):
@@ -400,7 +400,7 @@ class Note_Stream:
         if len(self.mode_idxs) > len(list(set(self.mode_idxs))):
             breakpoint()
         self.mode_idxs = np.array(self.mode_idxs)
-        
+
     def next_chord(self, register):
         """Register is a tuple (min, max) of frequencies"""
         self.cs_step()
@@ -413,10 +413,10 @@ class Note_Stream:
             exp = np.random.choice(exp_options)
             chord[i] *= 2 ** exp
         return chord
-            
-        
-        
-        
+
+
+
+
 
 def get_sub_mode(mode, num_of_pitches, weight=None):
     if np.all(weight==None):
@@ -424,8 +424,4 @@ def get_sub_mode(mode, num_of_pitches, weight=None):
     weight /= np.sum(weight)
     sub_mode = rng.choice(mode, num_of_pitches, p=weight, replace=False)
     sub_mode = np.sort(sub_mode)
-    return sub_mode  
-
-
-    
-    
+    return sub_mode

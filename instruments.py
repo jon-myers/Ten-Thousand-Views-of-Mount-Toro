@@ -537,7 +537,7 @@ class Klank:
 
     def make_packets(self):
         """Just the temporality. Add notes and other stats later."""
-        rest_ratio = 0.15 # proportion of klank that consists of rests
+        rest_ratio = 0.25 # proportion of klank that consists of rests
         dur_range = (3, 10)
         rt_durs = []
         remaining = self.rt_dur
@@ -610,13 +610,15 @@ class Klank:
             cs = np.arange(2, len(sub_mode))
             ns = Note_Stream(sub_mode, self.piece.fund, chord_sizes=cs)
             register = (100, 500) # just for now
-            reg_min = 75 * 2 ** np.random.uniform(0, 1.5)
-            reg_max = 566 * 2 ** np.random.uniform(0, 1.5)
-            for packet in gp:
-                
-                
+            reg_mins = 75 * 2 ** np.random.uniform(0, 1.5, size=2)
+            reg_maxs = 566 * 2 ** np.random.uniform(0, 1.5, size=2)
+            reg_min = np.linspace(reg_mins[0], reg_mins[1], len(gp))
+            reg_max = np.linspace(reg_maxs[0], reg_maxs[1], len(gp))
+            for p, packet in enumerate(gp):
+
+
                 if packet['type'] == 'note':
-                    packet['freqs'] = ns.next_chord((reg_min, reg_max))
+                    packet['freqs'] = ns.next_chord((reg_min[p], reg_max[p]))
                 else:
                     packet['freqs'] = [100]
         # breakpoint()
@@ -628,23 +630,23 @@ class Klank:
         #for a start, just have random delays, less than total dur.
         levels = h_tools.dc_alg(len(self.levels), len(self.grouped_packets))
         levels = self.levels[levels]
-        
+
         pan_pos = h_tools.dc_alg(len(self.pan_pos), len(self.grouped_packets))
         pan_pos = self.pan_pos[pan_pos]
-        
+
         for i, gp in enumerate(self.grouped_packets):
             this_prop = spread(prop, 2)
             pan_gamut_size = np.random.choice(np.arange(4, 10))
             pan_gamut = np.random.random(size=pan_gamut_size) * 2 - 1
             pans = pan_gamut[h_tools.dc_alg(len(pan_gamut), len(gp))]
-            transient_dur = spread(0.01, 10)
+            transient_dur = spread(0.007, 10)
             transient_curve = spread(0, 4, 'linear')
             for p, packet in enumerate(gp):
                 dur = packet['cy_dur']
                 decays = np.ones(np.size(packet['freqs'])) * dur * spread(this_prop, 2)
                 decays = np.array([spread(i, 2.0) for i in decays])
                 packet['cy_decays'] = decays
-                
+
                 amp = levels[i]
                 amps = np.ones(np.size(packet['freqs'])) * spread(levels[i], 3)
                 amps = np.clip(amps, 0, 1)
@@ -654,9 +656,9 @@ class Klank:
                 packet['pan'] = pans[p]
                 packet['transient_dur'] = spread(transient_dur, 4)
                 packet['transient_curve'] = spread(transient_curve, 2, 'linear')
-                
-                
-                    
+
+
+
         # for packet in self.packets:
         #     dur = packet['cy_dur']
         #     decays = np.ones(np.size(packet['freqs'])) * dur * prop
@@ -664,7 +666,7 @@ class Klank:
         #     decays = np.ones(np.size(packet['freqs'])) * dur * prop
         #     decays = np.array([spread(i, 2.0) for i in decays])
         #     packet['cy_decays'] = decays
-        # 
+        #
     # def add_pan(self, ):
 
     def get_event(self, packet):
@@ -692,6 +694,10 @@ class Klank:
             rt_dec_ends = np.array(rt_dec_ends)
             rt_dec_durs = rt_dec_ends - rt_start
             packet['rt_decays'] = rt_dec_durs
+            if packet['type'] == 'rest':
+                # breakpoint()
+                packet['rt_dur'] = "Rest(" + str(packet['rt_dur']) + ")"
+                # breakpoint()
 
 
         # breakpoint()

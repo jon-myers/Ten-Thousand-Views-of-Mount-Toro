@@ -10,16 +10,20 @@
 ~pan = Array.fill(~klanks.size, {|i| ~klanks[i]["pan"].asFloat});
 
 ~durs = Array.fill(~klanks.size, {|i|
-	if(~klanks[i]["type"] == "rest",
-		{Rest(~klanks[i]["rt_dur"].asFloat)},
-		{~klanks[i]["rt_dur"].asFloat}
-)});
+	var dur = ~klanks[i]["rt_dur"];
+	dur = if(dur[0].asString=="R", {dur.interpret}, {dur.asFloat});
+	dur});
+
 
 ~decays = Array.fill(~klanks.size, {|i| [~klanks[i]["rt_decays"]].asFloat});
 
 ~transient_durs = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_dur"].asFloat});
 ~transient_curve = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_curve"].asFloat});
 )
+dynklank
+
+100.do({|i| ~durs[i].postln});
+
 
 ~klanks[0]["transient_dur"]
 // SynthDef from 'factory'
@@ -50,7 +54,7 @@ p = Pbind(
 	\size, Pkey(\freqs).collect({|x| x[0].size.asSymbol}),
 	\instrument, Pkey(\size).collect({|x| \klank_ ++ x}),
 	\dur, Pseq(~durs, 1),
-	\off_dur, Pkey(\decays).collect({|x| 8*x[0].maxItem.asSymbol}),
+	\off_dur, Pkey(\decays).collect({|x| 32*x[0].maxItem.asSymbol}),
 	\pan,Pseq(~pan, 1),
 	\amps, Pseq(~amps, 1),
 	\transient_dur, Prand([0.005], inf),
@@ -58,6 +62,12 @@ p = Pbind(
 ).play
 );
 
+Rest(10)
 
+~freqs[0][0][0]
 
-~freqs[0][0][0] 
+a = "Rest(10)"
+a
+z=a.interpret
+z == Rest(10)
+Rest(10)
