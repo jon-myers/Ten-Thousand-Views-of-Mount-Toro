@@ -268,8 +268,13 @@ def phrase_compiler(dc_durs, dc_edges, nos, frame_nCVI, nCVI):
     starts = np.concatenate(([0], np.cumsum(durs)[:-1]))
     sizes = [round(dc.area(starts[i], starts[i]+durs[i])) for i in range(nos)]
     segs = np.array([])
+    if np.size(nCVI) > 1:
+        nCVI = np.linspace(nCVI[0], nCVI[1], nos)
     for s in range(nos):
-        rs = rhythmic_sequence_maker(sizes[s], nCVI) * durs[s]
+        if np.size(nCVI) > 1:
+            rs = rhythmic_sequence_maker(sizes[s], nCVI[s]) * durs[s]
+        else:
+            rs = rhythmic_sequence_maker(sizes[s], nCVI) * durs[s]
         segs = np.concatenate((segs, rs))
     return segs
 
@@ -378,7 +383,7 @@ def spread(init, max_ratio, scale='log', func=None):
     elif scale == 'linear':
         out = init + exponent * max_ratio
         if func != None and np.abs(init-out) > max_ratio:
-            
+
             func()
         return out
 

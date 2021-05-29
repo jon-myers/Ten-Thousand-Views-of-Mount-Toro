@@ -268,12 +268,12 @@ def build():
     piece = Piece(t, modes, fund)
     return piece
 piece = build()
-
-# breakpoint()
-
-
-
-
+#
+# # breakpoint()
+#
+#
+#
+#
 # pickle.dump(piece, open('pickles/piece.p', 'wb'))
 # klank = Klank(piece, 0)
 # print(klank.cy_start, klank.cy_end, klank.cy_dur)
