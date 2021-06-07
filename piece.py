@@ -15,7 +15,10 @@ class Piece:
         self.fund = fund
         self.noc = time.noc
         self.nos = time.nos
+        self.melody = make_melody(modes[0], modes[1:])
         self.sections = [Section(i, self) for i in range(self.nos)]
+        for i, section in enumerate(self.sections):
+            section.melody_note = self.fund * modes[self.melody[i][0], i, self.melody[i][1]]
         self.cycles = []
         for i in range(self.noc):
             cy = Cycle(i, self.time, self.sections, self)
@@ -32,6 +35,22 @@ class Piece:
         self.compile_plucks()
         self.format_plucks_JSON()
         self.make_klanks()
+        self.save_melody_JSON()
+        
+    def save_melody_JSON(self):
+        """Stores melody notes and seciton timings (stored in sections) as 
+        json, to be used by Supercollider. """ 
+        
+        self.melody_packets = []
+        for c, cycle in enumerate(self.cycles):
+            for s, section in enumerate(cycle.sections):
+                packet = {}
+                packet['note'] = section.melody_note
+                # packet['rt_start'] = section.rt_starts[c]
+                packet['rt_dur'] = section.rt_durs[c]
+                self.melody_packets.append(packet)
+        json.dump(self.melody_packets, open('JSON/melody.JSON', 'w'),
+                    cls=h_tools.NpEncoder)
         # print(self.offsets)
 
     def assign_params(self):
@@ -90,7 +109,7 @@ class Piece:
     def make_klanks(self):
         self.klank_packets = []
         # start with just the first one, for irama 0
-        for i in range(4):
+        for i in range(1):
             klank = Klank(self, 0)
             self.klank_packets += klank.packets
         file = open('json/klank_packets.JSON', 'w')
@@ -148,7 +167,11 @@ class Section:
         self.instances = []
         self.cy_start = self.time.cycle_starts[self.section_num]
         self.cy_end = self.time.cycle_ends[self.section_num]
-
+        rtfc = self.time.real_time_from_cycles
+        self.rt_starts = [rtfc(self.cy_start+i) for i in range(self.piece.noc)]
+        self.rt_ends = [rtfc(self.cy_end+i) for i in range(self.piece.noc)]
+        self.rt_durs = [self.rt_ends[i]-self.rt_starts[i] for i in range(self.piece.noc)] 
+        
         # self.cycles is assigned in Piece __init__, line 14
 
 
@@ -261,20 +284,17 @@ def build():
     dur_tot = 29*60
     fund = 150
     modes = make_mode_sequence((10, 20))
-    melody = make_melody(modes[0], modes[1:])
     events_per_cycle = np.shape(modes)[1]
     t = Time(dur_tot=dur_tot, f=0.5, noc=noc)
     t.set_cycle(len(modes[0]))
     piece = Piece(t, modes, fund)
     return piece
 piece = build()
-#
-# # breakpoint()
-#
-#
-#
-#
-# pickle.dump(piece, open('pickles/piece.p', 'wb'))
+it = piece.get_irama_transitions()
+print(it)
+rt = piece.time.real_time_from_cycles(it[0][0] + (it[0][1] / piece.nos))
+print(rt)
+pickle.dump(piece, open('pickles/piece.p', 'wb'))
 # klank = Klank(piece, 0)
 # print(klank.cy_start, klank.cy_end, klank.cy_dur)
 # klank.make_voice()

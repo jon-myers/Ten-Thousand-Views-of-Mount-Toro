@@ -156,7 +156,9 @@ class Time:
                 dur = self.real_time_dur_from_cycle_event(j, i)
                 upper_lim = np.floor(dur / min_dur)
                 if upper_lim > 1:
-                    subdivs = np.random.choice(np.arange(1, np.floor(dur / min_dur)))
+                    weight = 2 ** np.arange(upper_lim-1) 
+                    weight /= sum(weight)
+                    subdivs = np.random.choice(np.arange(1, upper_lim), p=weight)
                 else:
                     subdivs = 1
                 if subdivs > max_subdivs:
@@ -209,7 +211,17 @@ def faster_nCVI(d):
 def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times=False):
     """aka 'rsm'. """
     num_of_events = int(num_of_events)
-    if nCVI_average == 0:
+    if num_of_events == 1:
+        durs = np.array([1.0])
+        starts = np.array([0.0])
+        if start_times == 'both':
+            
+            return durs, starts
+        elif start_times == True:
+            return starts
+        else:
+            return durs
+    elif nCVI_average == 0:
         section_durs = np.ones(num_of_events) / num_of_events
         starts = np.linspace(0, 1, num_of_events, endpoint=False)
     else:

@@ -384,6 +384,10 @@ class Note_Stream:
         self.cs = chord_sizes
         self.cs_wt = cs_weight
         self.cs_cts = None
+        # self.gamut_size = gamut_size
+        # self.gamut = []
+        # self.make_gamut()
+        # self.g_cts = None
 
     def cs_step(self):
         cs_i, self.cs_cts = dc_step(len(self.cs), self.cs_cts, 2, self.cs_wt)
@@ -401,11 +405,16 @@ class Note_Stream:
             breakpoint()
         self.mode_idxs = np.array(self.mode_idxs)
 
-    def next_chord(self, register):
+    def next_chord(self, register=None):
         """Register is a tuple (min, max) of frequencies"""
         self.cs_step()
         self.note_step()
         chord = self.mode[self.mode_idxs] * self.fund
+        if np.all(register != None):
+            chord = self.registrate(chord, register)
+        return chord
+        
+    def registrate(self, chord, register):
         for i, note in enumerate(chord):
             min_exp = np.ceil(np.log2(register[0]/note))
             max_exp = np.floor(np.log2(register[1]/note))
@@ -413,7 +422,16 @@ class Note_Stream:
             exp = np.random.choice(exp_options)
             chord[i] *= 2 ** exp
         return chord
-
+    
+    # def make_gamut(self):
+    # 
+    #     for i in range(self.gamut_size):
+    #         self.gamut.append(self.next_chord())
+    # 
+    # def next_gamut_chord(self, register):
+    #     next_idx, self.g_cts = dc_step(self.gamut_size, self.g_cts, 2)
+    #     return self.gamut[next_idx]
+    # 
 
 
 
