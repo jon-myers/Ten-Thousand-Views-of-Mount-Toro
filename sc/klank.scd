@@ -20,7 +20,7 @@
 ~next_durs = ~next_durs.add( ~durs[~durs.size - 1]);
 
 ~decays = Array.fill(~klanks.size, {|i| [~klanks[i]["rt_decays"]].asFloat});
-~transient_durs = Array.fill(~klanks.size, {|i| i.postln;~klanks[i]["transient_dur"].asFloat});
+~transient_durs = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_dur"].asFloat});
 ~transient_curve = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_curve"].asFloat});
 );
 

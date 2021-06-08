@@ -36,11 +36,11 @@ class Piece:
         self.format_plucks_JSON()
         self.make_klanks()
         self.save_melody_JSON()
-        
+
     def save_melody_JSON(self):
-        """Stores melody notes and seciton timings (stored in sections) as 
-        json, to be used by Supercollider. """ 
-        
+        """Stores melody notes and seciton timings (stored in sections) as
+        json, to be used by Supercollider. """
+
         self.melody_packets = []
         for c, cycle in enumerate(self.cycles):
             for s, section in enumerate(cycle.sections):
@@ -109,8 +109,8 @@ class Piece:
     def make_klanks(self):
         self.klank_packets = []
         # start with just the first one, for irama 0
-        for i in range(1):
-            klank = Klank(self, 0)
+        for i in range(2):
+            klank = Klank(self, i)
             self.klank_packets += klank.packets
         file = open('json/klank_packets.JSON', 'w')
         json.dump(self.klank_packets, file, cls=h_tools.NpEncoder)
@@ -170,8 +170,8 @@ class Section:
         rtfc = self.time.real_time_from_cycles
         self.rt_starts = [rtfc(self.cy_start+i) for i in range(self.piece.noc)]
         self.rt_ends = [rtfc(self.cy_end+i) for i in range(self.piece.noc)]
-        self.rt_durs = [self.rt_ends[i]-self.rt_starts[i] for i in range(self.piece.noc)] 
-        
+        self.rt_durs = [self.rt_ends[i]-self.rt_starts[i] for i in range(self.piece.noc)]
+
         # self.cycles is assigned in Piece __init__, line 14
 
 
@@ -194,6 +194,8 @@ class Instance:
         self.irama = self.cycle.irama[self.section_num]
         self.get_event_map()
         self.get_real_durs()
+        self.rt_start = self.section.rt_starts[self.cycle_num]
+        self.rt_dur = self.section.rt_durs[self.cycle_num]
 
     def get_event_map(self):
         em = self.cycle.event_map
@@ -221,7 +223,7 @@ class Instance:
             real_dur = real_end - real_start
             self.real_durs.append(real_dur)
 
-
+    # def
 
     def make_plucks(self):
 
@@ -279,7 +281,7 @@ class Instance:
                 packet['rt_dur'] = rt_end - rt_start
             self.plucks.append(packets)
 
-def build():
+def build(save_pickle=False):
     noc = 7
     dur_tot = 29*60
     fund = 150
@@ -288,23 +290,14 @@ def build():
     t = Time(dur_tot=dur_tot, f=0.5, noc=noc)
     t.set_cycle(len(modes[0]))
     piece = Piece(t, modes, fund)
+    if save_pickle:
+        pickle.dump(piece, open('pickles/piece.p', 'wb'))
     return piece
-piece = build()
-it = piece.get_irama_transitions()
-print(it)
-rt = piece.time.real_time_from_cycles(it[0][0] + (it[0][1] / piece.nos))
-print(rt)
-pickle.dump(piece, open('pickles/piece.p', 'wb'))
-# klank = Klank(piece, 0)
-# print(klank.cy_start, klank.cy_end, klank.cy_dur)
-# klank.make_voice()
 
-
-
+#
+# piece = build()
 # it = piece.get_irama_transitions()
 # print(it)
-# print(melody)
-# sec_last = piece.sections[-1]
-
-# print(piece.all_plucks)
-# json.dump(piece.all_plucks, open('JSON/all_plucks.JSON', 'w'), cls=h_tools.NPEncoder)
+# rt = piece.time.real_time_from_cycles(it[0][0] + (it[0][1] / piece.nos))
+# print(rt)
+# pickle.dump(piece, open('pickles/piece.p', 'wb'))

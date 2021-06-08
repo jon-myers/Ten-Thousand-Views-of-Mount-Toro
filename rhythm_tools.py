@@ -112,7 +112,7 @@ class Time:
         time = self.time_from_real_time(real_time)
         return self.cycles_from_time(time)
 
-    def set_cycle(self, nos, nCVI=7):
+    def set_cycle(self, nos, nCVI=28):
         """Allows you to assign a set of numbers between 0 and 1, the start
         times of the sections within a cycle. Probably generated from `rhythmic
         sequence maker`, with `start_times` set to True."""
@@ -156,7 +156,7 @@ class Time:
                 dur = self.real_time_dur_from_cycle_event(j, i)
                 upper_lim = np.floor(dur / min_dur)
                 if upper_lim > 1:
-                    weight = 2 ** np.arange(upper_lim-1) 
+                    weight = 2 ** np.arange(upper_lim-1)
                     weight /= sum(weight)
                     subdivs = np.random.choice(np.arange(1, upper_lim), p=weight)
                 else:
@@ -215,7 +215,7 @@ def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times
         durs = np.array([1.0])
         starts = np.array([0.0])
         if start_times == 'both':
-            
+
             return durs, starts
         elif start_times == True:
             return starts

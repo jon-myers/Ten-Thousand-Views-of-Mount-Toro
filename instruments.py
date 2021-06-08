@@ -491,7 +491,7 @@ class Klank:
         if self.irama == 0:
             self.rt_td = 4
             self.tot_events = self.rt_dur * self.rt_td
-        
+
         self.repeatable_make_packets(0.25)
         self.alt_add_notes()
         self.add_real_times()
@@ -537,8 +537,7 @@ class Klank:
 
 
 
-    def repeatable_make_packets(self, repeat_chance):
-        rest_ratio = 0.15
+    def repeatable_make_packets(self, repeat_chance=0.25, rest_ratio=0.15):
         dur_min = 1
         dur_octs = 4
         dur_tot = self.rt_dur * (1 - rest_ratio)
@@ -546,8 +545,8 @@ class Klank:
         num_events = np.round(dur_tot / avg_dur)
         dur_pool = rsm(num_events, 60)
         np.random.shuffle(dur_pool)
-        
-        
+
+
         events = []
         ct = 0
         for i in range(len(dur_pool)):
@@ -575,7 +574,7 @@ class Klank:
         durs *= dur_tot * np.sum(durs)
         for i, obj in enumerate(events):
             obj['dur'] = durs[i]
-            
+
         max_num_rests = len(durs) + 1#inclusive
         min_num_rests = np.round(len(durs)/4)
         if min_num_rests == 0: min_num_rests = 1
@@ -595,7 +594,7 @@ class Klank:
                 event['phrase'] = original_event['phrase']
             else:
                 dur = event['dur']
-                dc_durs, dc_edges = self.make_generalized_pc_edges(dur)
+                dc_durs, dc_edges = self.make_pc_edges(dur)
                 subdivs = np.random.choice(np.arange(len(dc_durs) + 1, len(dc_durs) * 2 + 1))
                 nCVI_low = 20
                 nCVI_high = 60
@@ -605,7 +604,7 @@ class Klank:
             cy_phrase_durs = event['phrase'] * self.cy_dur / self.rt_dur
             cy_phrase_starts = cy_time + np.concatenate(([0], np.cumsum(cy_phrase_durs)[:-1]))
             cy_time += dur * self.cy_dur / self.rt_dur
-            
+
             for j in range(len(event['phrase'])):
                 packet = {}
                 packet['cy_start'] = cy_phrase_starts[j]
@@ -629,7 +628,7 @@ class Klank:
                 cy_time += cy_rests[r_ct]
                 r_ct += 1
             self.events.append(event)
-            
+
     def alt_add_notes(self):
         # first, put into grouped_packets, according to when mode changes
         self.packets = []
@@ -648,17 +647,17 @@ class Klank:
                     in_ct = 0
             out_ct += 1
             in_ct += 1
-        
+
         self.g_packets.append(self.packets[out_ct-in_ct:out_ct])
         # breakpoint()
-        decay_prop = 5
-        
+        decay_prop = 4
+
         levels_0 = h_tools.dc_alg(len(self.levels), len(self.g_packets))
         levels_0 = self.levels[levels_0]
         levels_1 = h_tools.dc_alg(len(self.levels), len(self.g_packets))
         levels_1 = self.levels[levels_1]
         levels = [(levels_0[i], levels_1[i]) for i in range(len(self.g_packets))]
-        
+
         for i, gp in enumerate(self.g_packets):
             em_event = self.get_em_event(gp[0])
             mode = self.piece.modes[em_event['variation'], em_event['mode']]
@@ -674,15 +673,15 @@ class Klank:
             reg_maxs = 566 * 2 ** np.random.uniform(0, 1.5, size=2)
             reg_min = np.linspace(reg_mins[0], reg_mins[1], len(gp))
             reg_max = np.linspace(reg_maxs[0], reg_maxs[1], len(gp))
-            
+
             this_prop = spread(decay_prop, 2)
             pan_gamut_size = np.random.choice(np.arange(4, 10))
             pan_gamut = np.random.random(size=pan_gamut_size) * 2 - 1
             pans = pan_gamut[h_tools.dc_alg(len(pan_gamut), len(gp))]
             transient_dur = spread(0.005, 6)
             transient_curve = spread(0, 4, 'linear')
-            
-            
+
+
             loc_id = gp[0]['loc_id']
             p_ct = 0
             for p, packet in enumerate(gp):
@@ -698,8 +697,8 @@ class Klank:
                         packet['cy_decays'] = [1.0]
                         packet['transient_dur'] = 0.005
                         packet['transient_curve'] = 0.0
-                        
-                    else: 
+
+                    else:
                         orig_event = self.events[packet['original_loc_id']]
                         if np.all(orig_event['packets'][p_ct]['mode'] == mode):
                             source = orig_event['packets'][p_ct]
@@ -721,19 +720,19 @@ class Klank:
                             this_levels = tuple(this_levels)
                             amps = np.linspace(this_levels[0], this_levels[1], size)
                             amps = np.array([np.clip(spread(i, 2.0), 0, 1) for i in amps])
-                            
+
                             packet['amps'] = amps
                             packet['pan'] = pans[p]
                             packet['transient_dur'] = spread(transient_dur, 4)
                             packet['transient_curve'] = spread(transient_curve, 2, 'linear')
-                        
+
                 else:
                     if packet['type'] == 'note':
                         reg_tup = (reg_min[p], reg_max[p])
                         packet['freqs'] = ns.next_chord(reg_tup)
                     else:
                         packet['freqs'] = 100
-                    
+
                     dur = packet['cy_dur']
                     size = np.size(packet['freqs'])
                     decays = np.ones(size) * dur * spread(this_prop, 2)
@@ -743,18 +742,18 @@ class Klank:
                     this_levels = tuple(this_levels)
                     amps = np.linspace(this_levels[0], this_levels[1], size)
                     amps = np.array([np.clip(spread(i, 2.0), 0, 1) for i in amps])
-                    
+
                     packet['amps'] = amps
                     packet['pan'] = pans[p]
                     packet['transient_dur'] = spread(transient_dur, 4)
                     packet['transient_curve'] = spread(transient_curve, 2, 'linear')
                 p_ct += 1
-    
+
     def make_packets(self):
         """Just the temporality. Add notes and other stats later."""
-        # this works for irama 1. For later iramas, where repetition is wanted, 
-        # this has to happen hierarchically rather than sequentially. 
-        
+        # this works for irama 1. For later iramas, where repetition is wanted,
+        # this has to happen hierarchically rather than sequentially.
+
         rest_ratio = 0.15 # proportion of klank that consists of rests
         # dur_range = (3, 20)
         dur_min = 2.5
@@ -827,7 +826,7 @@ class Klank:
                     inner_ct = 0
             outer_ct += 1
             inner_ct +=1
-            
+
         self.grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
         # breakpoint()
         for i, gp in enumerate(self.grouped_packets):
@@ -892,7 +891,7 @@ class Klank:
 
 
     def get_em_event(self, packet):
-        """Started calling it `em_event` instead of just `event` to signify 
+        """Started calling it `em_event` instead of just `event` to signify
         that they are different things."""
         start = packet['cy_start']
         cycle = (start // 1).astype(int)
@@ -935,7 +934,7 @@ class Klank:
             profiles = [[down, up, down], [down, up, middle], [middle, up, down]]
             dc_edges = profiles[np.random.choice(np.arange(3))]
             return dc_durs, dc_edges
-            
+
     def make_generalized_pc_edges(self, rt_dur, irama=0):
         min_seg_dur = 2
         max_seg_dur = 6
@@ -944,15 +943,15 @@ class Klank:
         num_segs = np.round(rt_dur / avg_seg_dur).astype(int)
         if num_segs == 0: num_segs = 1
         dc_durs = rsm(num_segs, 15) * rt_dur
-        
-        min_td = 1
+
+        min_td = 0.25
         max_td = 6
         td_octs = np.log2(max_td / min_td)
         dc_edges = [min_td * 2 ** np.random.uniform(td_octs) for i in range(num_segs + 1)]
         # should I sculpt these such that the mins end up at the beginning and
         # end, so that phrases ease in and out?
         # Or, should I accept what the fates ordain, and go about my merry way?
-        # for now, stick with the fates. 
+        # for now, stick with the fates.
         # breakpoint()
         return dc_durs, dc_edges
 
