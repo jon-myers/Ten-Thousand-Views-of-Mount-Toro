@@ -1,52 +1,78 @@
-{Pluck.ar(Impulse.ar(0), Impulse.kr(0), 600.reciprocal, (300 * (2 ** SinOsc.kr(1, 0))).reciprocal, 5.0, 0.3, 0.5)}.play
-
-Env.new([200, 800], [1], 'exponential').plot;
-
 (
-~freqEnv = {|spec, dur|
-	var start, pivot, target, center_0, center_1, width_0, width_1, centerEnv, widthEnv, freqEnv, trigEnv;
-	start = spec[0];
-	pivot = spec[1];
-	target = spec[2];
-	center_0 = (pivot + start) / 2;
-	center_1 = (pivot + target) / 2;
-	centerEnv = EnvGen.kr(Env.new([center_0, center_1], [dur], 'exponential'));
-	width_0 = (start/pivot).log2.abs;
-	width_1 = (target/pivot).log2.abs;
-	widthEnv = EnvGen.kr(Env.new([width_0, width_1], [dur], 'lin'));
-	freqEnv = centerEnv * (2 ** SinOsc.kr(dur.reciprocal, 0.75, widthEnv)).poll;
-	trigEnv = EnvGen.kr(Env.new([1, 1, 0], [dur/2, 0]));
-	freqEnv = Gate.kr(freqEnv, trigEnv);
-}
-);
+~log_avg = {|pt_a, pt_b|
+	pt_a * (2 ** ((pt_b/pt_a).log2 / 2))
+});
 
-Gate
+~notes = 200*[1, 5/4, 4/3, 5/4, 4/3, 3/2, 4/3, 5/4, 1];
+~pivots = [200*4/3, 200*3/2, 200*3/2, 200*3/2, 200*7/4, 200*7/4, 200*3/2, 200*4/3];
+~durs = Array.fill(9, {0.35});
+~waitProps = Array.fill(9, {1/3});
+
 
 (
 SynthDef.new(\moving_pluck, {|out=0|
-	var spec, freqEnv, sig, transientEnv;
-	spec = NamedControl.kr(\spec, 200 * [3/2, (4/3) * (3/2), (5/4)]);
-	freqEnv = ~freqEnv.value(spec, 1.0);
-	transientEnv = EnvGen.kr(Env.new([0, 1], [0.05]));
-	sig = Pluck.ar(Impulse.ar(0), Impulse.kr(0), ~pivot.reciprocal, freqEnv.reciprocal, 3, 0.2, 0.5);
-	sig = sig * transientEnv;
+	var spec, freqEnv, sig, transientEnv, allFreqs, notes, pivots, durs, waitProps;
+	notes = NamedControl.kr(\notes, ~notes);
+	pivots = NamedControl.kr(\pivots, ~pivots);
+	durs = NamedControl.kr(\durs, ~durs);
+	waitProps = NamedControl.kr(\waitProps, ~waitProps);
+	freqEnv = ~freqEnv.value(notes, pivots, durs, waitProps);
+	// transientEnv = EnvGen.kr(Env.new([0, 1], [0.05]));
+	sig = Pluck.ar(WhiteNoise.ar(0.5), Impulse.kr(0), 50.reciprocal, freqEnv.reciprocal, 20, 0.6, 1.0);
+	// sig = sig * transientEnv;
 	Out.ar(out, sig);
 }).add;
 )
 
 
 
-Synth(\moving_pluck)
+
+Synth(\moving_pluck, [\notes, ~notes, \pivots, ~pivots, \durs, ~durs, \waitProps, ~waitProps]);
 
 
-~freqEnv.value([~start, ~pivot, ~target], 1.0);
 
-~start = 3/2;
-~pivot = (4/3) * (3/2);
-~target = (5/4);
-~start * 200
-~target * 200
-{SinOsc.ar(~target*200, 0, 0.0125)}.play
-{SinOsc.ar(~start*200, 0, 0.0125)}.play
-~center_0 = (pivot + start) / 2;
-~width_0 = (~start/~pivot).log2.abs
+
+(
+~freqEnv = {|notes, pivots, durs, waitProps|
+	var envDurs = [], envSineDurs = [], envCenters = [], envWidths = [], envSines = [], envSineCurves = [];
+	var centerEnv, widthEnv, sineEnv;
+	(notes.size-1).do({|i|
+		var wait, move;
+		wait = durs[i] * waitProps[i];
+		move = durs[i] * (1 - waitProps[i]);
+		if(pivots[i] == nil, {var logAvg;
+			envDurs = envDurs ++ [wait, move];
+			envSineDurs = envSineDurs ++ [wait, move, 0];
+			logAvg = ~log_avg.value(notes[i], notes[i+1]);
+			envCenters = envCenters ++ [notes[i], logAvg];
+			envWidths = envWidths ++ [0, (notes[i]/logAvg).log2.abs];
+			envSines = envSines ++ if(notes[i] > logAvg, {[0, 1, -1]}, {[0, -1, 1]});
+			envSineCurves = envSineCurves ++ ['hold', 'sine', 'sine'];
+		}, {var logAvg;
+			envDurs = envDurs ++ [wait, move/2, move/2];
+			envSineDurs = envSineDurs ++ [wait, move/2, move/2, 0];
+			logAvg = [~log_avg.value(notes[i], pivots[i]), ~log_avg.value(pivots[i], notes[i+1])];
+			envCenters = envCenters ++ [notes[i], logAvg[0], logAvg[1]];
+			envWidths = envWidths ++ [0, (notes[i]/logAvg[0]).log2.abs, (notes[i+1]/logAvg[1]).log2.abs];
+			envSines = envSines ++ [0, -1, 1, -1];
+			envSineCurves = envSineCurves ++ ['hold', 'sine', 'sine', 'sine'];
+		})
+	});
+	envDurs.postln;
+	envCenters = envCenters.add(notes[notes.size-1]);
+	envWidths = envWidths.add(0);
+	envSineDurs = envSineDurs[..envSineDurs.size-2];
+	envSineCurves = envSineCurves[..envSineCurves.size-2];
+	centerEnv = EnvGen.kr(Env.new(envCenters, envDurs, 'hold'));
+	widthEnv = EnvGen.kr(Env.new(envWidths, envDurs, 'hold'));
+	sineEnv = EnvGen.kr(Env.new(envSines, envSineDurs, envSineCurves));
+	centerEnv * (2.0 ** (sineEnv * widthEnv));
+})
+
+
+~freqEnv.value(~sample_spec['notes'], ~sample_spec['pivots'], ~sample_spec['durs'], ~sample_spec['waitProps']);
+~sample_spec['notes']
+
+{~freqEnv.value(~notes, ~pivots, ~durs, ~waitProps)}.plot(3)
+[1, 2, 3].minItem
+
