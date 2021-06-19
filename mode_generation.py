@@ -413,7 +413,7 @@ class Note_Stream:
         if np.all(register != None):
             chord = self.registrate(chord, register)
         return chord
-        
+
     def registrate(self, chord, register):
         for i, note in enumerate(chord):
             min_exp = np.ceil(np.log2(register[0]/note))
@@ -422,16 +422,18 @@ class Note_Stream:
             exp = np.random.choice(exp_options)
             chord[i] *= 2 ** exp
         return chord
-    
+
     # def make_gamut(self):
-    # 
+    #
     #     for i in range(self.gamut_size):
     #         self.gamut.append(self.next_chord())
-    # 
+    #
     # def next_gamut_chord(self, register):
     #     next_idx, self.g_cts = dc_step(self.gamut_size, self.g_cts, 2)
     #     return self.gamut[next_idx]
-    # 
+    #
+
+
 
 
 
@@ -443,3 +445,27 @@ def get_sub_mode(mode, num_of_pitches, weight=None):
     sub_mode = rng.choice(mode, num_of_pitches, p=weight, replace=False)
     sub_mode = np.sort(sub_mode)
     return sub_mode
+
+
+
+
+# class Raag:
+#     """a way to generate raag-like structures, making use of statistical feedback
+#     and a 2 item markov table (likelihood of various note to note transitions).
+#     Needs to also have an attractor-like way of moving between areas or states
+#     within a raag. Either, when shit is exhausted, or ... randomly / gradually
+#     advancing?
+
+
+p_init = np.array([0.1, 0.8, 0.1])
+p_transition = np.array(
+    [[0.90, 0.05, 0.05],
+     [0.01, 0.90, 0.09],
+     [0.07, 0.03, 0.9]]
+)
+
+p_transition_example = np.array(
+    [[0.6,  0.2, 0.2],
+     [0.05, 0.9, 0.05],
+     [0.1,  0.2, 0.7]]
+)
