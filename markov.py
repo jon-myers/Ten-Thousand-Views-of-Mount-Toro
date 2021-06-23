@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from rhythm_tools import nCVI
+from rhythm_tools import nCVI, spread
 from rhythm_tools import rhythmic_sequence_maker as rsm
+import json
 rng = np.random.default_rng()
 p_init = np.array([0.1, 0.8, 0.1])
 p_transition = np.array(
@@ -27,7 +28,7 @@ def equilibrium_distribution(p_transition):
         b=np.transpose(A).dot(b)
     )
     return p_eq
-    
+
 def markov_sequence(p_init=None, p_transition=None, sequence_length=None):
     if p_init is None:
         p_init = equilibrium_distribution(p_transition)
@@ -53,16 +54,16 @@ import json
 import itertools
 
 modes = json.load(open('JSON/modes_and_variations.json', 'rb'))
-hsv = h_tools.gen_ratios_to_hsv(modes[0][2], [3, 5, 7, 11])
+hsv = h_tools.gen_ratios_to_hsv(modes[0][4], [3, 5, 7, 11])
 print(hsv)
 
 ord_hsv = h_tools.cast_to_ordinal(hsv)
 
 def generate_transition_table(hsv):
-    
+
     #TODO circle back to this, think about if it is possible to incorporate
-    # distance of contour into this formulation. Closer in contour should be 
-    # higher probability, somehow. Would it work to make a second transition 
+    # distance of contour into this formulation. Closer in contour should be
+    # higher probability, somehow. Would it work to make a second transition
     # table based entirely on contour distance, and then combine them somehow,
     # via multiplication and renormalization?
     p_transition = np.zeros((len(hsv), len(hsv)))
@@ -78,11 +79,11 @@ def generate_transition_table(hsv):
             order = rng.choice(idxs, len(idxs), replace=False)
             for o in order:
                 p_transition[p][o] = unordered_tr_probs[sort_arr_probs[ct]]
-                ct += 1 
+                ct += 1
     return p_transition
-            
-        
-p_tr = generate_transition_table(ord_hsv)    
+
+
+p_tr = generate_transition_table(ord_hsv)
 
 seq = markov_sequence(p_transition=p_tr, sequence_length=30)
 
@@ -90,8 +91,8 @@ def registrate(note, low, high):
     low = np.ceil(np.log2(low/note))
     high = np.floor(np.log2(high/note))
     oct = np.where(low==high, low, np.random.randint(low, high+1))
-    return note * (2 ** oct) 
-    
+    return note * (2 ** oct)
+
 def enumerate_freqs(mode, fund, low, high, for_pivots=True):
     mode = np.array(mode)
     ordered_mode = mode[np.argsort(mode)]
@@ -105,17 +106,42 @@ def enumerate_freqs(mode, fund, low, high, for_pivots=True):
         idx = lowest_idx % len(mode)
         next_freq = ordered_mode[idx] * fund * (2 ** oct)
         freqs.append(next_freq)
-    # if it is for pivots, you get one upper pitch above high. 
+    # if it is for pivots, you get one upper pitch above high.
     if for_pivots == False:
         freqs = freqs[:-1]
     return freqs
-    
-enumerate_freqs(modes[0][2], 200, 300, 700)
+
+# enumerate_freqs(modes[0][2], 200, 300, 700)
 
 
-def make_pluck_phrase(mode, fund, size, dur, nCVI, 
-    freq_range=(200, 500), start_idx=None, p_transition=None, 
-    pivot_ratio=0.5, hold_ratio=0.5, attack_ratio=0.75):
+def make_pluck_phrase(mode, fund, size, dur_tot, nCVI,
+    freq_range=(250, 500), start_idx=None, end_idx=None, p_transition=None,
+    pivot_ratio=0.8, hold_ratio=0.6, attack_ratio=0.66, pluck_amp=0.75):
+    """Makes a dictionary that can be interpretted by  supercollider SynthDef
+    instrument `\moving_pluck`.
+
+    mode: (np array floats) list of frequencies.
+    fund: (float) fundamental frequency.
+    size: (integer) number of notes in mode.
+    dur_tot: (float) total duration of phrase.
+    nCVI: (float) normalized combinatorial variability index.
+    freq_range: (tuple of floats) minimum and maximum pitch of phrase.
+    start_idx: (int) index of phrase's first note in mode array.
+    end_idx: (int) index of phrase's last note in mode array.
+    p_transition: (np array) Markov transition table.
+    pivot_ratio: (float) proportion of items in pivot array that are freqs, as
+        opposed to nils.
+    hold_ratio: (float or np array of floats) proportion of note duration to
+        stay on initial freq before beginning cosine interpolation to pivot or
+        next note.
+    attack_ratio: (float) proportion of notes that are rearticulated via pluck.
+    pluck_amp: (float) avg amplitude of pluck artiuclations.
+
+
+
+
+    """
+
     mode = np.array(mode)
     hsv = h_tools.gen_ratios_to_hsv(mode, [3, 5, 7, 11])
     p_transition = generate_transition_table(hsv)
@@ -126,8 +152,12 @@ def make_pluck_phrase(mode, fund, size, dur, nCVI,
     p_init = np.zeros(len(mode))
     p_init[start_idx] = 1
     note_seq = markov_sequence(p_init, p_transition, size)
-    rhythm_seq = rsm(size, nCVI)
+    if end_idx != None:
+        while note_seq[-1] != end_idx:
+            note_seq = markov_sequence(p_init, p_transition, size)
+    durs = rsm(size, nCVI) * dur_tot
     notes = registrate(mode[note_seq]*fund, freq_range[0], freq_range[1])
+
     num_of_pivots = np.round(pivot_ratio * (size-1))
     in_range_freqs = enumerate_freqs(mode, fund, freq_range[0], freq_range[1])
     pivot_locs = rng.choice(np.arange(size-1), num_of_pivots.astype(int), replace=False)
@@ -140,14 +170,41 @@ def make_pluck_phrase(mode, fund, size, dur, nCVI,
             pivots.append(pivot)
         else:
             pivots.append('nil')
-    breakpoint()
-            
-    
-    
-    
-    
-    
-    
 
-phrase = make_pluck_phrase(modes[0][2], 200, 8, 5, 20)
-    
+    if np.size(hold_ratio) == 1:
+        hold_ratio = np.repeat(hold_ratio, size-1)
+
+    num_of_plucks = np.round(attack_ratio*size).astype(int)
+    if num_of_plucks == 0: num_of_plucks = 1
+    pluck_amps = np.repeat(pluck_amp, num_of_plucks)
+    pluck_amps = [spread(i, 4/3) for i in pluck_amps]
+    pluck_locs = [0]
+    num_of_plucks -= 1
+    other_pluck_locs = rng.choice(np.arange(1, size), num_of_plucks, replace=False)
+    pluck_locs = np.sort(np.concatenate((pluck_locs, other_pluck_locs)))
+    starts = np.concatenate(([0], np.cumsum(durs)[:-1]))
+    pluck_starts = starts[pluck_locs]
+    wait_props = np.repeat(hold_ratio, size-1)
+    wait_props = [spread(i, 5/4) for i in wait_props]
+    moving_pluck_dict = {}
+    moving_pluck_dict['notes'] = notes
+    moving_pluck_dict['pivots'] = pivots
+    moving_pluck_dict['durs'] = durs
+    moving_pluck_dict['waitProps'] = wait_props
+    moving_pluck_dict['pluckStarts'] = pluck_starts
+    moving_pluck_dict['pluckAmps'] = pluck_amps
+    moving_pluck_dict['durTot'] = dur_tot * 3
+    return moving_pluck_dict
+
+
+
+
+
+
+
+
+
+phrase = make_pluck_phrase(modes[0][7], 200, 8, 3, 20, start_idx=0, end_idx=4)
+
+json.dump(phrase, open('JSON/moving_pluck_phrase.JSON', 'w'), cls=h_tools.NpEncoder)
+# breakpoint()
