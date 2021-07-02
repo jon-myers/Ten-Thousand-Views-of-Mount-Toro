@@ -10,11 +10,11 @@ import numpy as np
 
 
 class StretchCurve:
-    """Like `Time`, but just for applying a curve to a duration sequence, not a 
-    whole piece. Uses half cosine interpolation to get between tempi. Finds 
-    relative location by integrating to get beats. Then normalizes back to 
+    """Like `Time`, but just for applying a curve to a duration sequence, not a
+    whole piece. Uses half cosine interpolation to get between tempi. Finds
+    relative location by integrating to get beats. Then normalizes back to
     original dur. Durs should add up to 1."""
-    
+
     def __init__(self, durs, starting=1, ending=2):
         """durs are normalized."""
         self.start_mm = starting
@@ -22,23 +22,23 @@ class StretchCurve:
         self.durs = durs
         # breakpoint()
         self.starts = np.concatenate(([0], np.cumsum(self.durs)[:-1]))
-    
+
     def mm(self, x):
         """x is between 0 and 1 (1 is pi, as far as the cos is concerned)"""
-        
+
         diff = self.end_mm - self.start_mm
         mu2 = (1 - np.cos(x * np.pi)) / 2
         return self.start_mm * (1 - mu2) + self.end_mm * mu2
-    
+
     def b(self, x):
         """Elapsed beats"""
         return integrate(self.mm, 0, x)[0]
-        
+
     def render_stretch(self):
         new_end = self.b(1)
         new_starts = np.array([self.b(s) / new_end for s in self.starts])
         return new_starts
-        
+
 # stc = SimpleTimeCurve(np.ones(5)/5, 2, 1)
 # print(stc.render_stretch())
 # the time variable refers to the initial time frame. To refer to the actual
@@ -53,7 +53,8 @@ class Time:
         self.dur_tot = dur_tot
         self.z = z
         self.f = f
-        self.end_time = self.time_from_tempo(2 ** -irama_levels)
+        self.irama_levels = irama_levels
+        self.end_time = self.time_from_tempo(2 ** -self.irama_levels)
         self.end_beats = self.b(self.end_time)
         self.norm_factor = self.dur_tot / self.end_time
         self.noc = noc #number of cycles
@@ -150,7 +151,7 @@ class Time:
         self.nos = nos
         self.cycle_durs, self.cycle_starts = rsm(nos, nCVI, start_times='both')
         self.cycle_ends = np.append(self.cycle_starts[1:], [1])
-        min_dur = 7
+        min_dur = 6
         max_subdivs = 5
         self.event_dur_dict = {}
         self.event_map = {}
@@ -187,7 +188,7 @@ class Time:
                 upper_lim = np.floor(dur / min_dur)
                 if upper_lim > 1:
                     subdivs = np.random.choice(np.arange(1, np.floor(dur / min_dur)))
-                else: 
+                else:
                     subdivs = 1
                 if subdivs > max_subdivs:
                     subdivs = max_subdivs

@@ -22,7 +22,8 @@ class Time:
         self.dur_tot = dur_tot
         self.z = z
         self.f = f
-        self.end_time = self.time_from_tempo(2 ** -irama_levels)
+        self.irama_levels = irama_levels
+        self.end_time = self.time_from_tempo(2 ** -self.irama_levels)
         self.end_beats = self.b(self.end_time)
         self.norm_factor = self.dur_tot / self.end_time
         self.noc = noc #number of cycles
