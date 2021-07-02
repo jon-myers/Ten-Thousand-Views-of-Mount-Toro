@@ -1,13 +1,14 @@
 import json
 from harmony_tools import utils as h_tools
 from rhythm_tools import rhythmic_sequence_maker as rsm
-from rhythm_tools import jiggle_sequence, spread, phrase_compiler
+from rhythm_tools import jiggle_sequence, spread, phrase_compiler, nCVI
 import numpy as np
 import numpy_indexed as npi
 modes = json.load(open('JSON/modes_and_variations.JSON', 'rb'))[0]
 from numpy.random import default_rng
 import itertools
 from mode_generation import Note_Stream, get_sub_mode
+from markov import make_pluck_phrase
 rng = default_rng()
 Golden = (1 + 5 ** 0.5) / 2
 
@@ -528,7 +529,7 @@ class Klank:
         es_dur = es_ending - es_beginning
 
         self.cy_start = start[0] + ss_beginning + ss_dur * start[2]
-        self.cy_end = end[0] + es_ending + es_dur * end[2]
+        self.cy_end = end[0] + es_beginning + es_dur * end[2]
         self.cy_dur = self.cy_end - self.cy_start
 
         self.rt_start = self.piece.time.real_time_from_cycles(self.cy_start)
@@ -957,3 +958,152 @@ class Klank:
 
     def save_as_json(self, path):
         json.dump(self.packets, open(path, 'w'), cls=h_tools.NpEncoder)
+
+
+class MovingPluck:
+
+    def __init__(self, piece):
+        self.piece = piece
+        self.irama_levels = self.piece.time.irama_levels
+        self.assign_frame_timings()
+        self.assign_phrase_timings()
+        self.get_mode_regions()
+        breakpoint()
+
+    def assign_phrase_timings(self):
+        self.phrase_timings = [] # holds phrase timings for each irama level, in
+        # terms of rt durTot of irama level (as if not slowing down).
+
+
+        for i in range(self.irama_levels):
+            st_avg_dur = 4
+            end_avg_dur = 12
+            abs_min = 2
+
+
+            avg_dur = st_avg_dur * 2 ** (i * np.log(end_avg_dur / st_avg_dur) / (self.irama_levels-1))
+            spread_ratio = avg_dur / abs_min
+            avg_nCVI = nCVI([spread(1, spread_ratio) for _ in range(1000)])
+            rest_prop = (i+2) * 0.1
+            rp_lo = 0.4 - (i * 0.1)
+            num_of_rest_prop = np.random.uniform(rp_lo, rp_lo + 0.3)
+            phrase_durtot = self.rt_durs[i] * (1 - rest_prop)
+            rest_durtot = self.rt_durs[i] * (rest_prop)
+            num_phrases = np.round(phrase_durtot / avg_dur).astype(int)
+            num_rests = np.round(num_of_rest_prop * num_phrases).astype(int)
+            if num_rests == 0 or num_phrases == 0: breakpoint()
+            rest_locs = rng.choice(np.arange(num_phrases), num_rests, replace=False)
+            phrase_durs = rsm(num_phrases, avg_nCVI) * phrase_durtot
+            rest_durs = rsm(num_rests, avg_nCVI) * rest_durtot
+            phrases = []
+            time_ct = self.rt_starts[i]
+
+            rest_idx_ct = 0
+            for p in range(num_phrases):
+                start_prop = (time_ct - self.rt_starts[i]) / self.rt_durs[i] # with regard to whole irama level duration
+                end_prop = (time_ct + phrase_durs[p] - self.rt_starts[i]) / self.rt_durs[i]
+                cy_start_time = start_prop * self.cy_durs[i] + self.cy_starts[i]
+                cy_end_time = end_prop * self.cy_durs[i] + self.cy_starts[i]
+                cy_dur = cy_end_time - cy_start_time
+                phrase_spec = {
+                    'cy_start_time': cy_start_time,
+                    'cy_dur': cy_dur,
+                    'cy_end_time': cy_end_time,
+                    'start_time': time_ct,
+                    'dur': phrase_durs[p],
+                    'end_time': time_ct + phrase_durs[p],
+                    'irama': i
+                    }
+                phrases.append(phrase_spec)
+                time_ct += phrase_durs[p]
+                if p in rest_locs:
+                    time_ct += rest_durs[rest_idx_ct]
+                    rest_idx_ct += 1
+            breakpoint() # CHECK IF? (i think I fixed it) for some reason, things are off by like 0.5 seconds in real time ... calculation error?
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def assign_frame_timings(self):
+        trans = self.piece.get_irama_transitions()
+        self.trans = trans
+        fine_tuning = np.random.random(size=3)
+        self.cy_starts = []
+        self.cy_ends = []
+        self.cy_durs = []
+        self.rt_starts = []
+        self.rt_ends = []
+        self.rt_durs = []
+
+        for il in range(self.piece.time.irama_levels):
+            if il == 0:
+                start = (0, 0, 0)
+            else:
+                start = trans[il-1]
+                start = (start[0], start[1], fine_tuning[il-1])
+            if il == self.piece.time.irama_levels - 1:
+                end = (self.piece.noc+1, 0, 0)
+            else:
+                end = trans[il]
+                end = (end[0], end[1], fine_tuning[il])
+            # breakpoint()
+            start_section = self.piece.sections[start[1]]
+            ss_beginning = start_section.cy_start
+            ss_ending = start_section.cy_end
+            ss_dur = ss_ending - ss_beginning
+
+            end_section = self.piece.sections[end[1]]
+            es_beginning = end_section.cy_start
+            es_ending = end_section.cy_end
+            es_dur = es_ending - es_beginning
+
+            cy_start = start[0] + ss_beginning + ss_dur * start[2]
+            if il == self.piece.time.irama_levels - 1:
+                cy_end = self.piece.noc
+            else:
+                cy_end = end[0] + es_beginning + es_dur * end[2]
+            cy_dur = cy_end - cy_start
+            # breakpoint()
+            rt_start = self.piece.time.real_time_from_cycles(cy_start)
+            rt_end = self.piece.time.real_time_from_cycles(cy_end)
+            rt_dur = rt_end - rt_start
+
+            self.cy_starts.append(cy_start)
+            self.cy_ends.append(cy_end)
+            self.cy_durs.append(cy_dur)
+            self.rt_starts.append(rt_start)
+            self.rt_ends.append(rt_end)
+            self.rt_durs.append(rt_dur)
+
+    def get_mode_regions(self):
+        cy_end = 0
+        cy_ct = 0
+        em_ct = 0
+        self.mode_regions = []
+        for il in range(self.piece.time.irama_levels):
+            while cy_end < self.cy_ends[il]:
+                em = self.piece.cycles[cy_ct].event_map
+                key = list(em.keys())[em_ct]
+                ev = em[key]
+                cy_start = cy_ct + ev['start']
+                cy_end = cy_ct + ev['end']
+                # breakpoint()
+                mode = self.piece.modes[ev['variation'], ev['mode']]
+                dur = ev['dur']
+                obj = {'cy_start': cy_start, 'cy_end': cy_end, 'mode': mode, 'dur': dur}
+                self.mode_regions.append(obj)
+                em_ct += 1
+                if em_ct >= len(em):
+                    cy_ct += 1
+                    em_ct = 0
+                # em_ct = em_ct % self.piece.nos
+        # breakpoint()

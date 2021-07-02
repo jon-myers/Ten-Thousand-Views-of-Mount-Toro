@@ -53,11 +53,6 @@ from harmony_tools import plot as h_plot
 import json
 import itertools
 
-modes = json.load(open('JSON/modes_and_variations.json', 'rb'))
-hsv = h_tools.gen_ratios_to_hsv(modes[0][4], [3, 5, 7, 11])
-print(hsv)
-
-ord_hsv = h_tools.cast_to_ordinal(hsv)
 
 def generate_transition_table(hsv):
 
@@ -82,10 +77,6 @@ def generate_transition_table(hsv):
                 ct += 1
     return p_transition
 
-
-p_tr = generate_transition_table(ord_hsv)
-
-seq = markov_sequence(p_transition=p_tr, sequence_length=30)
 
 def registrate(note, low, high):
     low = np.ceil(np.log2(low/note))
@@ -196,15 +187,11 @@ def make_pluck_phrase(mode, fund, size, dur_tot, nCVI,
     moving_pluck_dict['durTot'] = dur_tot * 3
     return moving_pluck_dict
 
-
-
-
-
-
-
-
-
-phrase = make_pluck_phrase(modes[0][7], 200, 8, 3, 20, start_idx=0, end_idx=4)
-
-json.dump(phrase, open('JSON/moving_pluck_phrase.JSON', 'w'), cls=h_tools.NpEncoder)
+# modes = json.load(open('JSON/modes_and_variations.json', 'rb'))
+# hsv = h_tools.gen_ratios_to_hsv(modes[0][4], [3, 5, 7, 11])
+# ord_hsv = h_tools.cast_to_ordinal(hsv)
+# p_tr = generate_transition_table(ord_hsv)
+# seq = markov_sequence(p_transition=p_tr, sequence_length=30)
+# phrase = make_pluck_phrase(modes[0][7], 200, 8, 3, 20, start_idx=0, end_idx=4)
+# json.dump(phrase, open('JSON/moving_pluck_phrase.JSON', 'w'), cls=h_tools.NpEncoder)
 # breakpoint()

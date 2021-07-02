@@ -2,7 +2,7 @@
 from rhythm_tools import Time
 from mode_generation import make_mode_sequence, make_melody
 import numpy as np
-from instruments import Pluck, Klank
+from instruments import Pluck, Klank, MovingPluck
 import json
 from harmony_tools import utils as h_tools
 import pickle
@@ -32,10 +32,19 @@ class Piece:
         for cycle in self.cycles:
             for instance in cycle.instances:
                 instance.make_plucks()
-        self.compile_plucks()
-        self.format_plucks_JSON()
+        self.assess_chord_substitutions()
+        # self.compile_plucks()
+        # self.format_plucks_JSON()
         self.make_klanks()
         self.save_melody_JSON()
+        self.make_moving_plucks()
+
+    def assess_chord_substitutions(self):
+        self.cs_matrix = np.zeros((self.nos, self.noc))
+        for s, section in enumerate(self.sections):
+            for i, instance in enumerate(section.instances):
+                self.cs_matrix[s, i] = len(instance.event_map)
+
 
     def save_melody_JSON(self):
         """Stores melody notes and seciton timings (stored in sections) as
@@ -114,6 +123,12 @@ class Piece:
             self.klank_packets += klank.packets
         file = open('json/klank_packets.JSON', 'w')
         json.dump(self.klank_packets, file, cls=h_tools.NpEncoder)
+
+    def make_moving_plucks(self):
+        self.mp_packets = []
+        for i in range(1):
+            mp = MovingPluck(self)
+            # self.mp_packets += mp.packets
 
 
 class Cycle:
@@ -223,8 +238,6 @@ class Instance:
             real_dur = real_end - real_start
             self.real_durs.append(real_dur)
 
-    # def
-
     def make_plucks(self):
 
         """
@@ -282,7 +295,7 @@ class Instance:
             self.plucks.append(packets)
 
 def build(save_pickle=False):
-    noc = 7
+    noc = 8
     dur_tot = 29*60
     fund = 150
     modes = make_mode_sequence((10, 20))
