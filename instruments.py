@@ -1019,7 +1019,11 @@ class MovingPluck:
                 if p in rest_locs:
                     time_ct += rest_durs[rest_idx_ct]
                     rest_idx_ct += 1
+<<<<<<< HEAD
             breakpoint() # CHECK IF? (i think I fixed it) for some reason, things are off by like 0.5 seconds in real time ... calculation error?
+=======
+            breakpoint() # for some reason, things are off by like 0.5 seconds in real time ... calculation error?
+>>>>>>> 24834c42fd6fd9fe136b1da8b8b6340d20200af1
 
 
 
