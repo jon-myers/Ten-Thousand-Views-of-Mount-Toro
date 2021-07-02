@@ -965,13 +965,14 @@ class MovingPluck:
     def __init__(self, piece):
         self.piece = piece
         self.irama_levels = self.piece.time.irama_levels
+        self.time = self.piece.time
         self.assign_frame_timings()
         self.assign_phrase_timings()
         self.get_mode_regions()
-        breakpoint()
+        # breakpoint()
 
     def assign_phrase_timings(self):
-        self.phrase_timings = [] # holds phrase timings for each irama level, in
+        self.il_phrase_timings = [] # holds phrase timings for each irama level, in
         # terms of rt durTot of irama level (as if not slowing down).
 
 
@@ -1005,10 +1006,17 @@ class MovingPluck:
                 cy_start_time = start_prop * self.cy_durs[i] + self.cy_starts[i]
                 cy_end_time = end_prop * self.cy_durs[i] + self.cy_starts[i]
                 cy_dur = cy_end_time - cy_start_time
+                rt_start_time = self.time.real_time_from_cycles(cy_start_time)
+                rt_end_time = self.time.real_time_from_cycles(cy_end_time)
+                rt_dur = rt_end_time - rt_start_time
+                
                 phrase_spec = {
                     'cy_start_time': cy_start_time,
                     'cy_dur': cy_dur,
                     'cy_end_time': cy_end_time,
+                    'rt_start_time': rt_start_time,
+                    'rt_end_time': rt_end_time,
+                    'rt_dur': rt_dur,
                     'start_time': time_ct,
                     'dur': phrase_durs[p],
                     'end_time': time_ct + phrase_durs[p],
@@ -1019,8 +1027,8 @@ class MovingPluck:
                 if p in rest_locs:
                     time_ct += rest_durs[rest_idx_ct]
                     rest_idx_ct += 1
-
-            breakpoint() # CHECK IF? (i think I fixed it) for some reason, things are off by like 0.5 seconds in real time ... calculation error?
+            self.il_phrase_timings.append(phrases)
+        # breakpoint() # CHECK IF? (i think I fixed it) for some reason, things are off by like 0.5 seconds in real time ... calculation error?
 
 
 

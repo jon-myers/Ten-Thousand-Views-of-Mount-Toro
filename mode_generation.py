@@ -2,7 +2,7 @@ from harmony_tools import utils as h_tools
 from harmony_tools.utils import dc_alg_step as dc_step
 import numpy as np
 import json
-from fractions import Fraction
+from cfractions import Fraction
 import math
 import numpy_indexed as npi
 from numpy.random import default_rng
@@ -30,6 +30,7 @@ def get_aggregate_hd(mode, trial):
 def harmonic_distance(frac):
     return np.log(frac[0] * frac[1])
 
+# @profile
 def harmonic_distance_mixed(ratio1, ratio2):
     """Gets harmonic distance between two decimal ratios"""
     f1 = Fraction(ratio1).limit_denominator(10000)
@@ -79,6 +80,7 @@ def filter_by_limit(choices, lim, note):
     if len(out_choices) == 0: breakpoint()
     return out_choices
 
+# @profile
 def get_weight(mode, choices, alpha, last_mode=None):
     lm_weighting = [1/3, 2/3]
     weight = [1 / (get_aggregate_hd(mode, i) ** alpha) for i in choices]
@@ -89,6 +91,7 @@ def get_weight(mode, choices, alpha, last_mode=None):
         weight = lm_weighting[0] * last_mode_weight + lm_weighting[1] * weight
     return weight
 
+# @profile
 def build_mode(alpha, last_mode=None, lm_weighting=[1/3, 2/3]):
     # lm_weighting of [1/3, 2/3] means harmonic distance weighting based on last
     # mode is worth 1/3, while hd weighting from current mode is worth 2/3.
@@ -217,6 +220,7 @@ def insert_mode(preceding_mode, next_mode, after_next_mode, alpha=4):
     mode = build_mode(alpha, target_pitches, [0.5, 0.5])
     return mode * side_arm * preceding_mode[0]
 
+# @profile
 def get_alt_modes(preceding_mode, next_mode, alpha=4):
     """Given a preceding mode and a next mode, finds two 'alt' modes, whose root
     is contained by the next mode, and whose pitches are (stochastically) as
@@ -248,7 +252,7 @@ def get_alt_modes(preceding_mode, next_mode, alpha=4):
 
 
 
-
+# @profile
 def make_mode_sequence(size_lims=(6, 30), alpha=4):
 
     _3rds = [7/6, 75/64, 6/5, 11/9, 5/4, 9/7] #1.17, 1.29
