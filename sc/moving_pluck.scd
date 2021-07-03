@@ -144,6 +144,6 @@ Synth(\busOut)
 ~env = ~freqEnv.value(~notes, ~pivots, ~durs, ~waitProps);
 ~pEnv = ~pluckEnv.value(~pluckStarts);
 ~aEnv = ~ampEnv.value(~pluckAmps, ~pluckStarts);
-)
+);
 
-Synth(\moving_pluck, [\releasedur, ~releaseDur, \freqEnv, ~env, \pluckEnv, ~pEnv, \ampEnv, ~aEnv]);
+Synth(\moving_pluck, [\releaseDur, ~releaseDur, \freqEnv, ~env, \pluckEnv, ~pEnv, \ampEnv, ~aEnv]);
