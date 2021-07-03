@@ -310,6 +310,167 @@ def make_changing_pluck_phrase(mode_a, mode_b, fund, size, dur_tot, nCVI,
     return moving_pluck_dict
 
 
+def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
+    p_transitions, proportions, freq_range=(250, 500),
+    start_idx=None, end_idx=None, pivot_ratio=0.8, hold_ratio=0.75, attack_ratio=0.66,
+    pluck_amp=0.75):
+    """Makes a dictionary that can be interpretted by  supercollider SynthDef
+    instrument `\moving_pluck`.
+    
+    can go between 2 or more modes now. 
+
+    `modes`, `p_transitions`, and `proportions` are now tuples w/ multiple items. 
+
+    changes from one mode to another, midway through. Any start_idx and end_idx
+    is given for the first thing. When it gets taken over by second thing,
+    continue from nearest note to current note, and nearest note to target note.
+
+    mode: (np array floats) list of frequencies.
+    fund: (float) fundamental frequency.
+    size: (integer) number of notes in mode.
+    dur_tot: (float) total duration of phrase.
+    nCVI: (float) normalized combinatorial variability index.
+    freq_range: (tuple of floats) minimum and maximum pitch of phrase.
+    start_idx: (int) index of phrase's first note in mode array.
+    end_idx: (int) index of phrase's last note in mode array.
+    p_transition: (np array) Markov transition table.
+    pivot_ratio: (float) proportion of items in pivot array that are freqs, as
+        opposed to nils.
+    hold_ratio: (float or np array of floats) proportion of note duration to
+        stay on initial freq before beginning cosine interpolation to pivot or
+        next note.
+    attack_ratio: (float) proportion of notes that are rearticulated via pluck.
+    pluck_amp: (float) avg amplitude of pluck artiuclations.
+    """
+
+    modes = [np.sort(i) for i in modes]
+
+    if start_idx is None:
+        start_idx = np.random.randint(0, len(modes[0]))
+    p_init = np.zeros(len(modes[0]))
+    p_init[start_idx] = 1
+    note_seq = markov_sequence(p_init, p_transitions[0], size)
+    if end_idx != None:
+        while note_seq[-1] != end_idx:
+            note_seq = markov_sequence(p_init, p_transitions[0], size)
+    durs = rsm(size, nCVI) * dur_tot
+    midpoints = np.array(proportions) * dur_tot
+    starts = start_cumsum(durs)
+    crx_idxs = [np.where(starts > mp)[0][0] for mp in midpoints]
+    # breakpoint()
+    # crx_durs = durs[crx_idx:]
+    all_crx_durs = []
+    for i, crx_idx in enumerate(crx_idxs):
+        if i != len(crx_idxs) - 1:
+            crx_durs = durs[crx_idx: crx_idxs[i+1]]
+        else:
+            crx_durs = durs[crx_idx:]
+        all_crx_durs.append(crx_durs)
+    segmented_note_seq = [note_seq[:crx_idxs[0]]]
+    for i, crx_idx in enumerate(crx_idxs):
+        if i != len(crx_idxs) - 1:
+            ns = note_seq[crx_idx:crx_idxs[i+1]]
+        else:
+            ns = note_seq[crx_idx:]
+        segmented_note_seq.append(ns)
+    
+    
+    # good up through here, this is where it gets tricky though!!!!!!
+    first_ln_idx = note_seq[crx_idx[0]-1] # first 'last note' index
+    first_ln = modes[0][first_ln_idx] # first 'last note'
+    
+    # last_note_idxs = [note_seq[crx_idx-1] for crx_idx in crx_idxs]
+    # last_notes = [modes[i][ln_idx] for i, ln_idx in enumerate(ln_idxs)]
+    for i in range(len(crx_idxs)):
+        
+    
+    
+    
+    first_closest_st_idx = closest_index(first_ln, modes[1])
+    first_closest_end_idx = closest_index(modes[0][crx_idx[1]-1], modes[1])
+    first_closest_st_nt = modes[1][first_closest_st_idx]
+    first_closest_end_nt = modes[1][first_closest_end_idx]
+    
+    
+    
+    second_closest_st_idx = closest_index()
+    
+    
+    
+    last_note_idxs = [note_seq[crx_idx-1] for crx_idx in crx_idxs]
+    last_notes = [modes[i][ln_idx] for i, ln_idx in enumerate(ln_idxs)]
+    crx_closest_st_idxs = [closest_index(last_notes[i], modes[i+1]) for i in range(len(last_notes))]
+    crx_closest_end_idxs = [closest_index(mode_a[note_seq[-1]], mode_b)
+    crx_p_init = np.zeros(len(mode_b))
+    crx_p_init[crx_closest_st_idx] = 1
+    crx_note_seq = markov_sequence(crx_p_init, p_transition_b, size - crx_idx + 1)[1:]
+    if end_idx != None:
+        while crx_note_seq[-1] != crx_closest_end_idx:
+            crx_note_seq = markov_sequence(crx_p_init, p_transition_b, size - crx_idx + 1)[1:]
+
+    # make notes from first half note_seq, second half crx_note_seq.
+    notes = np.concatenate((mode_a[note_seq][:crx_idx], mode_b[crx_note_seq]))
+    # breakpoint()
+    notes = registrate(notes*fund, freq_range[0], freq_range[1])
+    # breakpoint()
+
+    num_of_pivots = np.round(pivot_ratio * (size-1))
+    in_range_freqs_a = enumerate_freqs(mode_a, fund, freq_range[0], freq_range[1])
+    in_range_freqs_b = enumerate_freqs(mode_b, fund, freq_range[0], freq_range[1])
+
+
+    pivot_locs = rng.choice(np.arange(size-1), num_of_pivots.astype(int), replace=False)
+    pivots = []
+    for i in range(len(notes)-1):
+        if i in pivot_locs:
+            if i+1 < crx_idx:
+                high = np.max(notes[i:i+2])
+                ir_freq_idx = in_range_freqs_a.index(high)
+                pivot = in_range_freqs_a[(ir_freq_idx+1) % len(mode_a)]
+            elif i+1 == crx_idx:
+                high = notes[i+1]
+                if high < notes[i]:
+                    ir_freq_idx = in_range_freqs_b.index(high) + 1
+                else:
+                    ir_freq_idx = in_range_freqs_b.index(high)
+                pivot = in_range_freqs_b[(ir_freq_idx+1) % len(mode_b)]
+            else:
+                high = np.max(notes[i:i+1])
+                ir_freq_idx = in_range_freqs_b.index(high)
+                pivot = in_range_freqs_b[(ir_freq_idx+1) % len(mode_b)]
+            pivots.append(pivot)
+        else:
+            pivots.append('nil')
+
+    # if np.size(hold_ratio) == 1:
+    #     hold_ratio = np.repeat(hold_ratio, size-1)
+
+    num_of_plucks = np.round(attack_ratio*size).astype(int)
+    if num_of_plucks == 0: num_of_plucks = 1
+    pluck_amps = np.repeat(pluck_amp, num_of_plucks)
+    pluck_amps = [spread(i, 4/3) for i in pluck_amps]
+    pluck_locs = [0]
+    num_of_plucks -= 1
+    other_pluck_locs = rng.choice(np.arange(1, size), num_of_plucks, replace=False)
+    pluck_locs = np.sort(np.concatenate((pluck_locs, other_pluck_locs)))
+    starts = np.concatenate(([0], np.cumsum(durs)[:-1]))
+    pluck_starts = starts[pluck_locs]
+    if np.size(hold_ratio) == 1:
+        hold_ratio = np.repeat(hold_ratio, size-1)
+        wait_props = [spread(i, 5/4) for i in hold_ratio]
+    else: wait_props = hold_ratio
+    moving_pluck_dict = {}
+    moving_pluck_dict['notes'] = notes
+    moving_pluck_dict['pivots'] = pivots
+    moving_pluck_dict['durs'] = durs
+    moving_pluck_dict['waitProps'] = wait_props
+    moving_pluck_dict['pluckStarts'] = pluck_starts
+    moving_pluck_dict['pluckAmps'] = pluck_amps
+    moving_pluck_dict['durTot'] = dur_tot
+    moving_pluck_dict['releaseDur'] = 3 * dur_tot
+
+    return moving_pluck_dict
+
 # modes = json.load(open('JSON/modes_and_variations.json', 'rb'))
 #
 # mode_a = modes[0][1]
