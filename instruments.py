@@ -1026,23 +1026,38 @@ class MovingPluck:
                 rt_dur = rt_end_time - rt_start_time
                 # cy_mode_transitions = [i['cy_start'] for i in self.piece.consolidated_em]
                 start_mt_idx = np.where(cy_start_time < self.piece.cy_mode_transitions)[0][0] - 1
-                end_mt_idx = np.where(cy_end_time < self.piece.cy_mode_transitions)[0][0] - 1
+                end_mt_idx = np.where(cy_end_time < self.piece.cy_mode_transitions)[0]
+                if np.size(end_mt_idx) == 0:
+                    end_mt_idx = len(self.piece.cy_mode_transitions)-1
+                else:
+                    end_mt_idx = end_mt_idx[0] - 1
                 # breakpoint()
                 if start_mt_idx == end_mt_idx:
                     modes = [self.piece.consolidated_em[start_mt_idx]['mode']]
                     vars = [self.piece.consolidated_em[start_mt_idx]['variation']]
-                    midpoint = 0
-                elif start_mt_idx == end_mt_idx - 1:
-                    modes = []
-                    modes.append(self.piece.consolidated_em[start_mt_idx]['mode'])
-                    modes.append(self.piece.consolidated_em[end_mt_idx]['mode'])
-                    vars = []
-                    vars.append(self.piece.consolidated_em[start_mt_idx]['variation'])
-                    vars.append(self.piece.consolidated_em[end_mt_idx]['variation'])
-                    tr_point = self.piece.cy_mode_transitions[end_mt_idx]
-                    midpoint = (tr_point - cy_start_time) / cy_dur
+                    midpoints = 0
+                # elif start_mt_idx == end_mt_idx - 1:
+                #     modes = []
+                #     modes.append(self.piece.consolidated_em[start_mt_idx]['mode'])
+                #     modes.append(self.piece.consolidated_em[end_mt_idx]['mode'])
+                #     vars = []
+                #     vars.append(self.piece.consolidated_em[start_mt_idx]['variation'])
+                #     vars.append(self.piece.consolidated_em[end_mt_idx]['variation'])
+                #     tr_point = self.piece.cy_mode_transitions[end_mt_idx]
+                #     midpoint = (tr_point - cy_start_time) / cy_dur
                 else:
-                    breakpoint() # either make the `make_changing_pluck_phrase` accept
+                    modes = []
+                    vars = []
+                    midpoints = []
+                    for j in range(end_mt_idx - start_mt_idx):
+                        modes.append(self.piece.consolidated_em[j+start_mt_idx]['mode'])
+                        vars.append(self.piece.consolidated_em[j+start_mt_idx]['variation'])
+
+                        tr_point = self.piece.cy_mode_transitions[j+start_mt_idx+1]
+                        midpoint = (tr_point - cy_start_time) / cy_dur
+                        midpoints.append(midpoint)
+                    # breakpoint()
+                    # breakpoint() # either make the `make_changing_pluck_phrase` accept
                     # unlimted  mode shifts; or break so that it never lands across more than two mode shifts
 
                 phrase_spec = {
@@ -1058,7 +1073,7 @@ class MovingPluck:
                     'irama': i,
                     'modes': modes,
                     'variations': vars,
-                    'midpoint': midpoint
+                    'midpoints': midpoints
                     }
                 phrases.append(phrase_spec)
                 time_ct += phrase_durs[p]
@@ -1067,7 +1082,7 @@ class MovingPluck:
                     rest_idx_ct += 1
             self.il_phrase_timings.append(phrases)
         # breakpoint() # CHECK IF? (i think I fixed it) for some reason, things are off by like 0.5 seconds in real time ... calculation error?
-
+        # TODO connect up to phrase maker to do it all in series, will take some work to make the SC work as well ...
 
 
 
