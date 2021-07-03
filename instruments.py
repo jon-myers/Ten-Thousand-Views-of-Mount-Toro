@@ -8,7 +8,7 @@ modes = json.load(open('JSON/modes_and_variations.JSON', 'rb'))[0]
 from numpy.random import default_rng
 import itertools
 from mode_generation import Note_Stream, get_sub_mode
-from markov import make_pluck_phrase
+from markov import make_pluck_phrase, generate_transition_table
 rng = default_rng()
 Golden = (1 + 5 ** 0.5) / 2
 
@@ -966,10 +966,25 @@ class MovingPluck:
         self.piece = piece
         self.irama_levels = self.piece.time.irama_levels
         self.time = self.piece.time
+        self.make_transition_tables()
         self.assign_frame_timings()
         self.assign_phrase_timings()
         self.get_mode_regions()
-        # breakpoint()
+        breakpoint()
+
+
+        # for each mode + variation, gotta have a p_transition set to go.
+
+    def make_transition_tables(self):
+        self.tts = []
+        for s in range(self.piece.nos):
+            section_tts = []
+            for i in range(3):
+                mode = self.piece.modes[i, s]
+                p_transition = generate_transition_table(mode)
+                section_tts.append(p_transition)
+            self.tts.append(section_tts)
+
 
     def assign_phrase_timings(self):
         self.il_phrase_timings = [] # holds phrase timings for each irama level, in
@@ -1009,7 +1024,27 @@ class MovingPluck:
                 rt_start_time = self.time.real_time_from_cycles(cy_start_time)
                 rt_end_time = self.time.real_time_from_cycles(cy_end_time)
                 rt_dur = rt_end_time - rt_start_time
-                
+                # cy_mode_transitions = [i['cy_start'] for i in self.piece.consolidated_em]
+                start_mt_idx = np.where(cy_start_time < self.piece.cy_mode_transitions)[0][0] - 1
+                end_mt_idx = np.where(cy_end_time < self.piece.cy_mode_transitions)[0][0] - 1
+                # breakpoint()
+                if start_mt_idx == end_mt_idx:
+                    modes = [self.piece.consolidated_em[start_mt_idx]['mode']]
+                    vars = [self.piece.consolidated_em[start_mt_idx]['variation']]
+                    midpoint = 0
+                elif start_mt_idx == end_mt_idx - 1:
+                    modes = []
+                    modes.append(self.piece.consolidated_em[start_mt_idx]['mode'])
+                    modes.append(self.piece.consolidated_em[end_mt_idx]['mode'])
+                    vars = []
+                    vars.append(self.piece.consolidated_em[start_mt_idx]['variation'])
+                    vars.append(self.piece.consolidated_em[end_mt_idx]['variation'])
+                    tr_point = self.piece.cy_mode_transitions[end_mt_idx]
+                    midpoint = (tr_point - cy_start_time) / cy_dur
+                else:
+                    breakpoint() # either make the `make_changing_pluck_phrase` accept
+                    # unlimted  mode shifts; or break so that it never lands across more than two mode shifts
+
                 phrase_spec = {
                     'cy_start_time': cy_start_time,
                     'cy_dur': cy_dur,
@@ -1020,7 +1055,10 @@ class MovingPluck:
                     'start_time': time_ct,
                     'dur': phrase_durs[p],
                     'end_time': time_ct + phrase_durs[p],
-                    'irama': i
+                    'irama': i,
+                    'modes': modes,
+                    'variations': vars,
+                    'midpoint': midpoint
                     }
                 phrases.append(phrase_spec)
                 time_ct += phrase_durs[p]

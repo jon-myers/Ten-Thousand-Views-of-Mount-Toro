@@ -15,6 +15,7 @@ class Piece:
         self.fund = fund
         self.noc = time.noc
         self.nos = time.nos
+        self.consolidate_em()
         self.melody = make_melody(modes[0], modes[1:])
         self.sections = [Section(i, self) for i in range(self.nos)]
         for i, section in enumerate(self.sections):
@@ -38,6 +39,21 @@ class Piece:
         self.make_klanks()
         self.save_melody_JSON()
         self.make_moving_plucks()
+
+    def consolidate_em(self):
+        em = self.time.event_map
+        self.consolidated_em = []
+        for i in list(em.keys()):
+            item = em[i]
+            # breakpoint()
+            for k in list(item.keys()):
+                new_cy_start = i+k
+                new_obj = item[k].copy()
+                new_obj['cy_start'] = new_cy_start
+                # breakpoint()
+                self.consolidated_em.append(new_obj)
+        self.cy_mode_transitions = np.array([i['cy_start'] for i in self.consolidated_em])
+
 
     def assess_chord_substitutions(self):
         self.cs_matrix = np.zeros((self.nos, self.noc))

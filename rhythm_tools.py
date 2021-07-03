@@ -409,3 +409,8 @@ def normalize(array):
 
 def jiggle_sequence(sequence, spd):
     return normalize(np.array([spread(i, spd) for i in sequence]))
+
+def start_cumsum(dur_array):
+    """Returns the iterative cumsum of the duration array, effectively giving
+    their start times."""
+    return np.concatenate(([0], np.cumsum(dur_array)[:-1]))

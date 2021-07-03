@@ -94,14 +94,14 @@
 	logPitch = Array.fill(envCenters.size, {|i| envCenters[i] + (envWidths[i] * envSines[i])});
 	logPitchEnv = Env.new(logPitch, envDurs, 'sine');
 });
-In
+
 (
-SynthDef.new(\moving_pluck, {|out=0, durTot|
+SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 	var spec, freqEnv, sig, transientEnv, allFreqs, pluckEnv, ampEnv, doneEnv;
 	freqEnv = Env.newClear(200);
 	pluckEnv = Env.newClear(200);
 	ampEnv = Env.newClear(200);
-	doneEnv = EnvGen.kr(Env.new([0, 0], [durTot]), doneAction: 2);
+	doneEnv = EnvGen.kr(Env.new([0, 0], [releaseDur]), doneAction: 2);
 	freqEnv = NamedControl.kr(\freqEnv, freqEnv.asArray);
 	pluckEnv = NamedControl.kr(\pluckEnv, pluckEnv.asArray);
 	ampEnv = NamedControl.kr(\ampEnv, ampEnv.asArray);
@@ -110,9 +110,9 @@ SynthDef.new(\moving_pluck, {|out=0, durTot|
 	// sig = Streson.ar(sig, (2**~env.asArray[0]).reciprocal);
 	// sig = HPF.ar(sig, 300);
 	// sig = sig * transientEnv;
-	// sig = Pan2.ar(sig);
+	sig = Pan2.ar(sig);
 	Out.ar(out, sig);
-	Out.ar(~testSympatheticBus.index, sig);
+	// Out.ar(~testSympatheticBus.index, sig);
 }).add;
 )
 
@@ -125,8 +125,7 @@ SynthDef.new(\busOut, {|out=0|
 
 Synth(\busOut)
 ~testSympatheticBus = Bus.audio(s, 1);
-~testSympatheticBus.index
-0.003.reciprocal
+
 
 (
 ~pluck = File.open(~jsonPath ++ "moving_pluck_phrase.JSON", "r");
@@ -136,7 +135,7 @@ Synth(\busOut)
 ~pivots = Array.fill(~pluck["pivots"].size, {|i|
 	if(~pluck["pivots"][i] == "nil", {nil}, {~pluck["pivots"][i].asFloat})
 });
-~durTot = ~pluck["durTot"].asFloat;
+~releaseDur = ~pluck["releaseDur"].asFloat;
 ~durs = ~pluck["durs"].asFloat;
 ~waitProps = ~pluck["waitProps"].asFloat;
 ~pluckStarts = ~pluck["pluckStarts"].asFloat;
@@ -146,8 +145,5 @@ Synth(\busOut)
 ~pEnv = ~pluckEnv.value(~pluckStarts);
 ~aEnv = ~ampEnv.value(~pluckAmps, ~pluckStarts);
 )
-2 ** ~env.asArray[0]
-~env[0]
-Streson
-Pluck
-Synth(\moving_pluck, [\durTot, ~durTot, \freqEnv, ~env, \pluckEnv, ~pEnv, \ampEnv, ~aEnv]);
+
+Synth(\moving_pluck, [\releasedur, ~releaseDur, \freqEnv, ~env, \pluckEnv, ~pEnv, \ampEnv, ~aEnv]);
