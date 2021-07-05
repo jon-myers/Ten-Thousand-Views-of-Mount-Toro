@@ -22,6 +22,13 @@
 ~pluckStarts = 0.35 * [0, 3, 5];
 ~pluckAmps = [0.7, 0.7, 0.7];
 
+~notes = 100*[16/8, 15/8, 16/8];
+~pivots = [nil, nil];
+~durs = [0.5, 1, 0.5];
+~waitProps = [0, 0.5];
+~pluckStarts = [0];
+~pluckAmps = [0.75];
+
 (
 ~pluckEnv = {|starts|
 	var durs, levels, envDurs, pluckEnv;
@@ -92,6 +99,7 @@
 	envCenters.insert(0, envCenters[0]);
 	envWidths.insert(0, envWidths[0]);
 	logPitch = Array.fill(envCenters.size, {|i| envCenters[i] + (envWidths[i] * envSines[i])});
+	logPitch.postln;
 	logPitchEnv = Env.new(logPitch, envDurs, 'sine');
 });
 
@@ -106,7 +114,7 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 	pluckEnv = NamedControl.kr(\pluckEnv, pluckEnv.asArray);
 	ampEnv = NamedControl.kr(\ampEnv, ampEnv.asArray);
 	freqEnv = 2 ** EnvGen.kr(freqEnv);
-	sig = Pluck.ar(EnvGen.kr(ampEnv) * PinkNoise.ar(), EnvGen.kr(pluckEnv), 40.0.reciprocal, freqEnv.reciprocal, 5, 0.28, 1.0);
+	sig = Pluck.ar(EnvGen.kr(ampEnv) * PinkNoise.ar(), EnvGen.kr(pluckEnv), 40.0.reciprocal, freqEnv.reciprocal, 5, 0.38, 1.0);
 	// sig = Streson.ar(sig, (2**~env.asArray[0]).reciprocal);
 	// sig = HPF.ar(sig, 300);
 	// sig = sig * transientEnv;
@@ -146,4 +154,6 @@ Synth(\busOut)
 ~aEnv = ~ampEnv.value(~pluckAmps, ~pluckStarts);
 );
 
+{EnvGen.kr(~env)}.plot(3)
+~releaseDur = 3.0
 Synth(\moving_pluck, [\releaseDur, ~releaseDur, \freqEnv, ~env, \pluckEnv, ~pEnv, \ampEnv, ~aEnv]);
