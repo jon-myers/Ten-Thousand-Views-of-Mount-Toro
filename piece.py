@@ -53,6 +53,7 @@ class Piece:
                 # breakpoint()
                 self.consolidated_em.append(new_obj)
         self.cy_mode_transitions = np.array([i['cy_start'] for i in self.consolidated_em])
+        self.cy_mode_transitions = np.append(self.cy_mode_transitions, self.noc)
 
 
     def assess_chord_substitutions(self):

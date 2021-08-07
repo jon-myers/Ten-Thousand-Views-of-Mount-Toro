@@ -8,7 +8,7 @@ modes = json.load(open('JSON/modes_and_variations.JSON', 'rb'))[0]
 from numpy.random import default_rng
 import itertools
 from mode_generation import Note_Stream, get_sub_mode
-from markov import make_pluck_phrase, generate_transition_table
+from markov import make_pluck_phrase, generate_transition_table, make_multi_changing_pluck_phrase
 rng = default_rng()
 Golden = (1 + 5 ** 0.5) / 2
 
@@ -970,11 +970,54 @@ class MovingPluck:
         self.assign_frame_timings()
         self.assign_phrase_timings()
         self.get_mode_regions()
+        self.make_phrases()
         breakpoint()
 
 
         # for each mode + variation, gotta have a p_transition set to go.
 
+
+    def make_phrases(self):
+        init_td = 1/2
+        init_nCVI = 8
+        for il in range(self.irama_levels):
+            avg_td = init_td * (2 ** il)
+            avg_nCVI = init_nCVI * (2 ** il)
+            phrase_timings = self.il_phrase_timings[il]
+            for pt in phrase_timings:
+                p_td = spread(avg_td, 1.5)
+                p_nCVI = spread(avg_nCVI, 1.5)
+                size = np.round(pt['rt_dur'] / p_td).astype(int)
+                if size == 0: size = 1
+                dur_tot = pt['cy_dur'] # keep it in cy, then convert later
+                modes = []
+                tts = []
+                for idx in range(len(pt['modes'])):
+                    var_idx = pt['variations'][idx]
+                    mode_idx = pt['modes'][idx]
+                    mode = self.piece.modes[var_idx][mode_idx]
+                    modes.append(mode)
+                    tt = self.tts[mode_idx][var_idx]
+                    tts.append(tt)
+                modes = np.array(modes)
+                tts = np.array(tts)
+                # breakpoint()
+                midpoints = pt['midpoints']
+                if len(np.shape(midpoints)) == 0: midpoints = [midpoints]
+                if len(modes) == 1:
+                    pp = make_pluck_phrase(modes[0], self.piece.fund, size, 
+                        dur_tot, p_nCVI, p_transition=tts[0])
+                else:
+                    pp = make_multi_changing_pluck_phrase(modes, self.piece.fund, 
+                        size, dur_tot, p_nCVI, tts, midpoints)
+                breakpoint() # next thing to do is convert this timing stuff, 
+                # which is in cycles, to real time. will require including the 
+                # cy start time in the function itself? or going through some 
+                # conversion function? 
+                
+                
+                
+    
     def make_transition_tables(self):
         self.tts = []
         for s in range(self.piece.nos):
@@ -1056,6 +1099,9 @@ class MovingPluck:
                         tr_point = self.piece.cy_mode_transitions[j+start_mt_idx+1]
                         midpoint = (tr_point - cy_start_time) / cy_dur
                         midpoints.append(midpoint)
+                    if end_mt_idx != len(self.piece.consolidated_em):    
+                        modes.append(self.piece.consolidated_em[end_mt_idx]['mode'])
+                        vars.append(self.piece.consolidated_em[end_mt_idx]['variation'])
                     # breakpoint()
                     # breakpoint() # either make the `make_changing_pluck_phrase` accept
                     # unlimted  mode shifts; or break so that it never lands across more than two mode shifts

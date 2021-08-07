@@ -79,16 +79,16 @@ def generate_transition_table(hsv):
 
 
 def registrate(note, low, high):
-    low = np.ceil(np.log2(low/note))
-    high = np.floor(np.log2(high/note))
+    low = np.ceil(np.log2((low/note).astype(float)))
+    high = np.floor(np.log2((high/note).astype(float)))
     oct = np.where(low==high, low, np.random.randint(low, high+1))
     return note * (2 ** oct)
 
 def enumerate_freqs(mode, fund, low, high, for_pivots=True):
     mode = np.array(mode)
     ordered_mode = mode[np.argsort(mode)]
-    lowest_idx = np.argmin(np.ceil(np.log2(low/(ordered_mode*fund))))
-    init_oct = np.ceil(np.log2(low/(ordered_mode[lowest_idx]*fund)))
+    lowest_idx = np.argmin(np.ceil(np.log2((low/(ordered_mode*fund)).astype(float))))
+    init_oct = np.ceil(np.log2((low/(ordered_mode[lowest_idx]*fund))))
     freqs = [ordered_mode[lowest_idx]*fund * (2 ** init_oct)]
     oct_ct = 0
     while freqs[-1] < high:
@@ -185,7 +185,7 @@ def make_pluck_phrase(mode, fund, size, dur_tot, nCVI,
 
 
 def closest_index(test, arr):
-    logs = np.log2(test/arr)
+    logs = np.log2((test/arr).astype(float))
     dists = np.abs(np.round(logs) - logs)
     return np.argmin(dists)
 
@@ -403,8 +403,8 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
             for j in range(len(segmented_pivot_locs)):
                 if i in segmented_pivot_locs[j]:
                     hi = np.max(all_notes[i:i+2])
-                    higher_idx = np.where(in_range_freqs[j] > hi)[0][0]
-                    pivot = in_range_freqs[j][higher_idx]
+                    higher_idx = np.where(np.array(in_range_freqs[j]) > hi)[0][0]
+                    pivot = np.array(in_range_freqs[j])[higher_idx]
                     pivots.append(pivot)
         else:
             pivots.append('nil')
