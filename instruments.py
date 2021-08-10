@@ -8,7 +8,7 @@ modes = json.load(open('JSON/modes_and_variations.JSON', 'rb'))[0]
 from numpy.random import default_rng
 import itertools
 from mode_generation import Note_Stream, get_sub_mode
-from markov import make_pluck_phrase, generate_transition_table, make_multi_changing_pluck_phrase
+from markov import make_pluck_phrase, generate_transition_table, make_multi_changing_pluck_phrase, closest_index, make_pitch_pairs
 rng = default_rng()
 Golden = (1 + 5 ** 0.5) / 2
 
@@ -496,7 +496,7 @@ class Klank:
         self.repeatable_make_packets(0.25)
         self.alt_add_notes()
         self.add_real_times()
-        # breakpoint()
+        
         # self.make_packets()
         # self.add_notes()
         # self.add_spec()
@@ -569,7 +569,7 @@ class Klank:
                 obj = events[index].copy()
                 obj['is_copy'] = True
                 obj['loc_id'] = i
-                # breakpoint()
+                
                 events.append(obj)
         durs = np.fromiter((i['dur'] for i in events), float)
         durs *= dur_tot * np.sum(durs)
@@ -615,6 +615,7 @@ class Klank:
                 packet['original_loc_id'] = event['original_loc_id']
                 packet['loc_id'] = event['loc_id']
                 packet['is_copy'] = event['is_copy']
+                packet['irama'] = self.irama
                 event['packets'].append(packet)
             if i in rest_locs:
                 packet = {}
@@ -625,6 +626,7 @@ class Klank:
                 packet['original_loc_id'] = event['original_loc_id']
                 packet['loc_id'] = event['loc_id']
                 packet['is_copy'] = event['is_copy']
+                packet['irama'] = self.irama
                 event['packets'].append(packet)
                 cy_time += cy_rests[r_ct]
                 r_ct += 1
@@ -636,7 +638,7 @@ class Klank:
         for e in self.events:
             for packet in e['packets']:
                 self.packets.append(packet)
-        # breakpoint()
+        
         out_ct, in_ct, current_mode = 0, 0, None
         self.g_packets = [] # grouped packets
         for packet in self.packets:
@@ -650,7 +652,7 @@ class Klank:
             in_ct += 1
 
         self.g_packets.append(self.packets[out_ct-in_ct:out_ct])
-        # breakpoint()
+        
         decay_prop = 4
 
         levels_0 = h_tools.dc_alg(len(self.levels), len(self.g_packets))
@@ -829,7 +831,7 @@ class Klank:
             inner_ct +=1
 
         self.grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
-        # breakpoint()
+        
         for i, gp in enumerate(self.grouped_packets):
             event = self.get_em_event(gp[0])
             mode = self.piece.modes[event['variation'], event['mode']]
@@ -852,7 +854,7 @@ class Klank:
                     packet['freqs'] = ns.next_chord((reg_min[p], reg_max[p]))
                 else:
                     packet['freqs'] = [100]
-        # breakpoint()
+        
         # now assign the sub mode to each
 
 
@@ -929,9 +931,9 @@ class Klank:
         if irama == 0:
             midpoint = np.random.uniform(0.25, 0.75)
             dc_durs = np.array([midpoint, 1-midpoint]) * rt_dur
-            down = np.random.uniform(1.5, 3) / 1.5
-            middle = np.random.uniform(3, 4.5) / 1.5
-            up = np.random.uniform(4.5, 6) / 1.5
+            down = np.random.uniform(1.5, 3) / 3
+            middle = np.random.uniform(3, 4.5) / 3
+            up = np.random.uniform(4.5, 6) / 3
             profiles = [[down, up, down], [down, up, middle], [middle, up, down]]
             dc_edges = profiles[np.random.choice(np.arange(3))]
             return dc_durs, dc_edges
@@ -953,7 +955,7 @@ class Klank:
         # end, so that phrases ease in and out?
         # Or, should I accept what the fates ordain, and go about my merry way?
         # for now, stick with the fates.
-        # breakpoint()
+        
         return dc_durs, dc_edges
 
     def save_as_json(self, path):
@@ -970,24 +972,34 @@ class MovingPluck:
         self.assign_frame_timings()
         self.assign_phrase_timings()
         self.get_mode_regions()
+        # breakpoint()
         self.make_phrases()
-        breakpoint()
+        self.save_phrases()
+        # breakpoint()
 
 
-        # for each mode + variation, gotta have a p_transition set to go.
+    
+    def save_phrases(self):
+        path = 'JSON/moving_pluck_phrases.JSON'
+        json.dump(self.phrases, open(path, 'w'), cls=h_tools.NpEncoder)
+        
 
-
+    
+    
     def make_phrases(self):
-        init_td = 1/2
+        init_td = 1
         init_nCVI = 8
+        self.phrases = []
         for il in range(self.irama_levels):
-            avg_td = init_td * (2 ** il)
+            freq_min = 100 * (Golden ** il)
+            attack_ratio = 0.1 + (0.2 * il)
+            avg_td = init_td * (Golden ** il)
             avg_nCVI = init_nCVI * (2 ** il)
             phrase_timings = self.il_phrase_timings[il]
             for pt in phrase_timings:
                 p_td = spread(avg_td, 1.5)
                 p_nCVI = spread(avg_nCVI, 1.5)
-                size = np.round(pt['rt_dur'] / p_td).astype(int)
+                size = np.round(pt['rt_dur'] * p_td).astype(int)
                 if size == 0: size = 1
                 dur_tot = pt['cy_dur'] # keep it in cy, then convert later
                 modes = []
@@ -1001,20 +1013,52 @@ class MovingPluck:
                     tts.append(tt)
                 modes = np.array(modes)
                 tts = np.array(tts)
-                # breakpoint()
                 midpoints = pt['midpoints']
                 if len(np.shape(midpoints)) == 0: midpoints = [midpoints]
                 if len(modes) == 1:
                     pp = make_pluck_phrase(modes[0], self.piece.fund, size, 
-                        dur_tot, p_nCVI, p_transition=tts[0])
+                        dur_tot, p_nCVI, (freq_min, 2*freq_min), 
+                        p_transition=tts[0], attack_ratio=attack_ratio)
                 else:
                     pp = make_multi_changing_pluck_phrase(modes, self.piece.fund, 
-                        size, dur_tot, p_nCVI, tts, midpoints)
-                breakpoint() # next thing to do is convert this timing stuff, 
+                        size, dur_tot, p_nCVI, tts, midpoints, 
+                        (freq_min, 2*freq_min), attack_ratio=attack_ratio)
+                    # next thing to do is convert this timing stuff, 
                 # which is in cycles, to real time. will require including the 
-                # cy start time in the function itself? or going through some 
+                # cy start time in tphhe function itself? or going through some 
                 # conversion function? 
+                pp = self.add_real_time_to_pluck_phrase(pp, pt)
+                self.phrases.append(pp)
+        
                 
+    def add_real_time_to_pluck_phrase(self, pp, pt):
+        cy_start = pt['cy_start_time']
+        rt_start_of_phrase = self.piece.time.real_time_from_cycles(cy_start)
+        cy_durs = pp['durs']
+        rt_durs = []
+        cy_pluck_starts = pp['pluckStarts']
+        rt_pluck_starts = []
+        accumulator = 0
+        for cy_dur in cy_durs:
+            start = cy_start + accumulator
+            accumulator += cy_dur
+            end = cy_start + accumulator
+            rt_start = self.piece.time.real_time_from_cycles(start)
+            rt_end = self.piece.time.real_time_from_cycles(end)
+            rt_dur = rt_end - rt_start
+            rt_durs.append(rt_dur)
+        
+        for pluck_start in cy_pluck_starts:
+            cy_pluck_start = pluck_start + cy_start
+            rt_pluck_start = self.piece.time.real_time_from_cycles(cy_pluck_start)
+            rt_pluck_starts.append(rt_pluck_start - rt_start_of_phrase)
+        rt_dur_tot = sum(rt_durs)
+        pp['rt_durs'] = rt_durs
+        pp['rt_pluckStarts'] = rt_pluck_starts
+        pp['rt_durTot'] = rt_dur_tot
+        pp['rt_releaseDur'] = 3 * rt_dur_tot
+        pp['rt_start'] = rt_start_of_phrase
+        return pp
                 
                 
     
@@ -1043,7 +1087,7 @@ class MovingPluck:
             avg_dur = st_avg_dur * 2 ** (i * np.log(end_avg_dur / st_avg_dur) / (self.irama_levels-1))
             spread_ratio = avg_dur / abs_min
             avg_nCVI = nCVI([spread(1, spread_ratio) for _ in range(1000)])
-            rest_prop = (i+2) * 0.1
+            rest_prop = 0.3
             rp_lo = 0.4 - (i * 0.1)
             num_of_rest_prop = np.random.uniform(rp_lo, rp_lo + 0.3)
             phrase_durtot = self.rt_durs[i] * (1 - rest_prop)
@@ -1056,6 +1100,7 @@ class MovingPluck:
             rest_durs = rsm(num_rests, avg_nCVI) * rest_durtot
             phrases = []
             time_ct = self.rt_starts[i]
+            # breakpoint()
 
             rest_idx_ct = 0
             for p in range(num_phrases):
@@ -1102,10 +1147,51 @@ class MovingPluck:
                     if end_mt_idx != len(self.piece.consolidated_em):    
                         modes.append(self.piece.consolidated_em[end_mt_idx]['mode'])
                         vars.append(self.piece.consolidated_em[end_mt_idx]['variation'])
-                    # breakpoint()
-                    # breakpoint() # either make the `make_changing_pluck_phrase` accept
+                    # either make the `make_changing_pluck_phrase` accept
                     # unlimted  mode shifts; or break so that it never lands across more than two mode shifts
-
+                current_mode = self.piece.modes[vars[0]][modes[0]]
+                if len(phrases) == 0 and len(self.il_phrase_timings) == 0:
+                    pitch_pairs = [None, None]
+                else: 
+                    if len(phrases) != 0:
+                        # this is all just getting info from previous phrase
+                        last_mode_idx = phrases[-1]['modes'][-1]
+                        last_var_idx = phrases[-1]['variations'][-1]
+                        last_pitch_idx = phrases[-1]['pitch_pairs'][-1]    
+                        first_mode_idx = phrases[-1]['modes'][0]
+                        first_var_idx = phrases[-1]['variations'][0]
+                        first_pitch_idx = phrases[-1]['pitch_pairs'][0]
+                    elif len(self.il_phrase_timings) != 0:
+                        last_mode_idx = self.il_phrase_timings[-1][-1]['modes'][-1]
+                        last_var_idx = self.il_phrase_timings[-1][-1]['variations'][-1]
+                        last_pitch_idx = self.il_phrase_timings[-1][-1]['pitch_pairs'][-1]
+                        first_mode_idx = self.il_phrase_timings[-1][-1]['modes'][0]
+                        first_var_idx = self.il_phrase_timings[-1][-1]['variations'][0]
+                        first_pitch_idx = self.il_phrase_timings[-1][-1]['pitch_pairs'][0]
+                        
+                    last_mode = self.piece.modes[last_var_idx][last_mode_idx]
+                    last_pitch = last_mode[last_pitch_idx]    
+                    first_mode = self.piece.modes[first_var_idx][first_mode_idx]
+                    first_pitch = first_mode[first_pitch_idx]
+                    
+                    closest_first_idx = closest_index(first_pitch, current_mode)
+                    closest_last_idx = closest_index(last_pitch, current_mode)
+                    # possible situations: 
+                    # 0. same first pitch, 
+                    # 1. same last pitch, 
+                    # 2. both same, 
+                    # 3. previous last pitch is new first pitch
+                    situ = np.random.randint(4)
+                    if situ == 0:
+                        pitch_pairs = [closest_first_idx, None]
+                    elif situ == 1:
+                        pitch_pairs = [None, closest_last_idx]
+                    elif situ == 2:
+                        pitch_pairs = [closest_first_idx, closest_last_idx]
+                    elif situ == 3:
+                        pitch_pairs = [closest_last_idx, None]
+                tt = self.tts[modes[0]][vars[0]]
+                pitch_pairs = make_pitch_pairs(current_mode, tt, pitch_pairs[0], pitch_pairs[1])
                 phrase_spec = {
                     'cy_start_time': cy_start_time,
                     'cy_dur': cy_dur,
@@ -1119,7 +1205,8 @@ class MovingPluck:
                     'irama': i,
                     'modes': modes,
                     'variations': vars,
-                    'midpoints': midpoints
+                    'midpoints': midpoints,
+                    'pitch_pairs': pitch_pairs
                     }
                 phrases.append(phrase_spec)
                 time_ct += phrase_durs[p]
@@ -1127,7 +1214,7 @@ class MovingPluck:
                     time_ct += rest_durs[rest_idx_ct]
                     rest_idx_ct += 1
             self.il_phrase_timings.append(phrases)
-        # breakpoint() # CHECK IF? (i think I fixed it) for some reason, things are off by like 0.5 seconds in real time ... calculation error?
+         # CHECK IF? (i think I fixed it) for some reason, things are off by like 0.5 seconds in real time ... calculation error?
         # TODO connect up to phrase maker to do it all in series, will take some work to make the SC work as well ...
 
 
@@ -1165,7 +1252,7 @@ class MovingPluck:
             else:
                 end = trans[il]
                 end = (end[0], end[1], fine_tuning[il])
-            # breakpoint()
+            
             start_section = self.piece.sections[start[1]]
             ss_beginning = start_section.cy_start
             ss_ending = start_section.cy_end
@@ -1182,7 +1269,7 @@ class MovingPluck:
             else:
                 cy_end = end[0] + es_beginning + es_dur * end[2]
             cy_dur = cy_end - cy_start
-            # breakpoint()
+            
             rt_start = self.piece.time.real_time_from_cycles(cy_start)
             rt_end = self.piece.time.real_time_from_cycles(cy_end)
             rt_dur = rt_end - rt_start
@@ -1206,7 +1293,7 @@ class MovingPluck:
                 ev = em[key]
                 cy_start = cy_ct + ev['start']
                 cy_end = cy_ct + ev['end']
-                # breakpoint()
+                
                 mode = self.piece.modes[ev['variation'], ev['mode']]
                 dur = ev['dur']
                 obj = {'cy_start': cy_start, 'cy_end': cy_end, 'mode': mode, 'dur': dur}
@@ -1216,4 +1303,4 @@ class MovingPluck:
                     cy_ct += 1
                     em_ct = 0
                 # em_ct = em_ct % self.piece.nos
-        # breakpoint()
+        

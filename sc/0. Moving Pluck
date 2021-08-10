@@ -1,34 +1,6 @@
-(~dir = PathName.new(Document.current.dir);
-~jsonPath = ~dir.fullPath[..~dir.fullPath.size-3] ++ 'JSON/';
-);
-(
-~pluck = File.open(~jsonPath ++ "moving_pluck_phrase.JSON", "r");
-~pluck = ~pluck.readAllString.parseYAML;
-~notes = ~pluck["notes"].asFloat;
-~pivots = ~pluck["pivots"];
-~pivots = Array.fill(~pluck["pivots"].size, {|i|
-	if(~pluck["pivots"][i] == "nil", {nil}, {~pluck["pivots"][i].asFloat})
-});
-~durs = ~pluck["durs"].asFloat;
-~waitProps = ~pluck["waitProps"].asFloat;
-~pluckStarts = ~pluck["pluckStarts"].asFloat;
-~pluckAmps = ~pluck["pluckAmps"].asFloat;
-)
 
-~notes = 200*[1, 5/4, 4/3, 5/4, 4/3, 3/2, 4/3, 5/4, 1];
-~pivots = [200*4/3, nil, nil, nil, 200*7/4, 200*7/4, 200*3/2, 200*4/3];
-~durs = Array.fill(9, {0.35});
-~waitProps = Array.fill(9, {1/2});
-~pluckStarts = 0.35 * [0, 3, 5];
-~pluckAmps = [0.7, 0.7, 0.7];
 
-~notes = 100*[16/8, 15/8, 16/8];
-~pivots = [nil, nil];
-~durs = [0.5, 1, 0.5];
-~waitProps = [0, 0.5];
-~pluckStarts = [0];
-~pluckAmps = [0.75];
-
+(// these three functions return envs that get passed to the synthdef via Pbind.
 (
 ~pluckEnv = {|starts|
 	var durs, levels, envDurs, pluckEnv;
@@ -47,20 +19,14 @@
 	});
 	pluckEnv = Env.new(levels, envDurs);
 	pluckEnv
-})
+});
 
 (
 ~ampEnv = {|amps, starts|
 	var durs;
 	durs = Array.fill(starts.size-1, {|i| starts[i+1] - starts[i]});
 	Env.new(amps, durs, 'hold');
-})
-
-// {EnvGen.kr(~ampEnv.value([1, 0.5, 0.75], [0, 0.25, 0.6]))}.plot(2)
-
-
-// {EnvGen.kr(~pluckEnv.value([0, 1, 1.5]))}.plot(3)
-
+});
 
 (// staying in log the whole time now, so I only have to make one EngGen.
 ~freqEnv = {|notes, pivots, durs, waitProps|
@@ -100,6 +66,8 @@
 	logPitch.postln;
 	logPitchEnv = Env.new(logPitch, envDurs, 'sine');
 });
+)
+
 
 (
 SynthDef.new(\moving_pluck, {|out=0, releaseDur|
@@ -120,38 +88,14 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 	Out.ar(out, sig);
 	// Out.ar(~testSympatheticBus.index, sig);
 }).add;
-)
-
-SynthDef.new(\busOut, {|out=0|
-	var sig;
-	sig = ~testSympatheticBus.ar(1) * [0, 1];
-	sig = Streson.ar(sig, (2**~env.[0]).reciprocal);
-	Out.ar(out, sig*[0, 1])
-}).add
-
-Synth(\busOut)
-~testSympatheticBus = Bus.audio(s, 1);
-
-
-(
-~pluck = File.open(~jsonPath ++ "moving_pluck_phrase.JSON", "r");
-~pluck = ~pluck.readAllString.parseYAML;
-~notes = ~pluck["notes"].asFloat;
-~pivots = ~pluck["pivots"];
-~pivots = Array.fill(~pluck["pivots"].size, {|i|
-	if(~pluck["pivots"][i] == "nil", {nil}, {~pluck["pivots"][i].asFloat})
-});
-~releaseDur = ~pluck["releaseDur"].asFloat;
-~durs = ~pluck["durs"].asFloat;
-~waitProps = ~pluck["waitProps"].asFloat;
-~pluckStarts = ~pluck["pluckStarts"].asFloat;
-~pluckAmps = ~pluck["pluckAmps"].asFloat;
+);
 
 ~env = ~freqEnv.value(~notes, ~pivots, ~durs, ~waitProps);
 ~pEnv = ~pluckEnv.value(~pluckStarts);
 ~aEnv = ~ampEnv.value(~pluckAmps, ~pluckStarts);
-);
 
-{EnvGen.kr(~env)}.plot(3)
-~releaseDur = 3.0
-Synth(\moving_pluck, [\releaseDur, ~releaseDur, \freqEnv, ~env, \pluckEnv, ~pEnv, \ampEnv, ~aEnv]);
+
+
+(~dir = PathName.new(Document.current.dir);
+~jsonPath = ~dir.fullPath[..~dir.fullPath.size-3] ++ 'JSON/';
+);

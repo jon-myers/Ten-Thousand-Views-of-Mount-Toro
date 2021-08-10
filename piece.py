@@ -311,16 +311,22 @@ class Instance:
                 packet['rt_dur'] = rt_end - rt_start
             self.plucks.append(packets)
 
-def build(save_pickle=False):
+def build(save_piece_pickle=False, use_pickles=False, save_pickles=False):
     noc = 8
     dur_tot = 29*60
     fund = 150
+    if use_pickles:
+        t = pickle.load(open('pickles/t.p', 'rb'))
+        modes = pickle.load(open('pickles/modes.p', 'rb'))
     modes = make_mode_sequence((10, 20))
     events_per_cycle = np.shape(modes)[1]
     t = Time(dur_tot=dur_tot, f=0.5, noc=noc)
     t.set_cycle(len(modes[0]))
+    if save_pickles:
+        pickle.dump(t, open('pickles/t.p', 'wb'))
+        pickle.dump(modes, open('pickles/modes.p', 'wb'))
     piece = Piece(t, modes, fund)
-    if save_pickle:
+    if save_piece_pickle:
         pickle.dump(piece, open('pickles/piece.p', 'wb'))
     return piece
 
