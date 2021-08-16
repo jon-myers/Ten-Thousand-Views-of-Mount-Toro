@@ -1303,15 +1303,3 @@ class MovingPluck:
                     cy_ct += 1
                     em_ct = 0
                 # em_ct = em_ct % self.piece.nos
-
-class Popcorn:
-
-    def __init__(self, piece):
-        self.piece = piece
-        self.time = self.piece.time
-
-
-
-    def set_timespan_control_spec_morphs(self):
-
-        num_of_kernals = 

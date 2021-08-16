@@ -1,11 +1,13 @@
 # from tempo_curve import Time
 from rhythm_tools import Time
+from rhythm_tools import rhythmic_sequence_maker as rsm
 from mode_generation import make_mode_sequence, make_melody
 import numpy as np
 from instruments import Pluck, Klank, MovingPluck
 import json
 from harmony_tools import utils as h_tools
 import pickle
+from popcorn import Timespan
 
 class Piece:
 
@@ -30,15 +32,72 @@ class Piece:
         for cycle in self.cycles:
             cycle.assign_instances()
         self.offsets = np.random.random(size=(self.nos, 6))
+        self.get_irama_transitions()
         for cycle in self.cycles:
             for instance in cycle.instances:
                 instance.make_plucks()
         self.assess_chord_substitutions()
         # self.compile_plucks()
         # self.format_plucks_JSON()
-        self.make_klanks()
-        self.save_melody_JSON()
-        self.make_moving_plucks()
+
+
+        # self.make_klanks()
+        # self.save_melody_JSON()
+        # self.make_moving_plucks()
+        self.make_popcorn()
+
+    def make_popcorn(self):
+        cy_durs = [s.cy_end - s.cy_start for s in self.sections]
+        init_rt_durs = [s.real_dur(0) for s in self.sections]
+        # ^ this gets altered real time, nead standardized real time, non bendy instead...
+        # going to have to be an array of 4 item arrays, for each of the possible iramas
+        # which all would have different non bendy real times ... oy!
+        # TODO ^
+        init_rt_density = 1.75
+        init_cy_density = init_rt_density * init_rt_durs[0] / cy_durs[0]
+        cy_densities = rsm(self.nos, 40) * self.nos * init_cy_density
+        vol_offsets = rsm(self.nos, 40) * self.nos
+        onset_nCVIs = 40 * rsm(self.nos, 40) * self.nos
+        vol_dist_nCVIs = 40 * rsm(self.nos, 40) * self.nos
+        all_vol_dist_vals = []
+        for i in range(self.nos):
+            vol_dist_vals = rsm(3, vol_dist_nCVIs[i])
+            vol_dist_vals /= np.prod(vol_dist_vals) ** (1/3)
+            all_vol_dist_vals.append(vol_dist_vals)
+        init_ctr_freq = 150
+        # init_ctr_freq_log2 = np.log2(init_ctr_freq)
+        ctr_freqs = rsm(self.nos, 40) * self.nos * init_ctr_freq
+        ctr_freqs_log2 = np.log2(ctr_freqs)
+        ctr_freq_bws = rsm(self.nos, 40) * self.nos
+        max_freq_oct_bws = rsm(self.nos, 60) * self.nos * 1.3
+        nCVI_amps = rsm(self.nos, 30) * self.nos * 30
+        nCVI_durs = rsm(self.nos, 30) * self.nos * 30
+        nCVI_bws = rsm(self.nos, 30) * self.nos * 30
+        attack_avgs = rsm(self.nos, 40) * self.nos * 0.01
+        attack_avg_max_bws = rsm(self.nos, 40) * self.nos * 1.5
+
+        self.timespans = []
+        # breakpoint()
+        for c in range(self.noc):
+            cy_timespans = []
+            for s in range(self.nos):
+                irama = self.cycles[c].irama[s]
+                if np.size(irama) == 2:
+                    irama = irama[0]
+                sec_timespans = []
+                for i in range(irama+1):
+                    ts = Timespan(
+                        cy_durs[s], cy_densities[s], vol_offsets[s], onset_nCVIs[s],
+                        all_vol_dist_vals[s], ctr_freqs_log2[s], ctr_freq_bws[s],
+                        max_freq_oct_bws[s], nCVI_amps[s], nCVI_durs[s], nCVI_bws[s],
+                        attack_avgs[s], attack_avg_max_bws[s], i)
+                    ts.build()
+                    sec_timespans.append(ts)
+                cy_timespans.append(sec_timespans)
+            self.timespans.append(cy_timespans)
+
+        breakpoint()
+
 
     def consolidate_em(self):
         em = self.time.event_map
