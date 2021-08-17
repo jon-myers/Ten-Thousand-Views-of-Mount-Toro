@@ -48,14 +48,17 @@ class Piece:
 
     def make_popcorn(self):
         cy_durs = [s.cy_end - s.cy_start for s in self.sections]
-        init_rt_durs = [s.real_dur(0) for s in self.sections]
+        # init_rt_durs = [s.real_dur(0) for s in self.sections]
         # ^ this gets altered real time, nead standardized real time, non bendy instead...
         # going to have to be an array of 4 item arrays, for each of the possible iramas
         # which all would have different non bendy real times ... oy!
         # TODO ^
         init_rt_density = 1.75
-        init_cy_density = init_rt_density * init_rt_durs[0] / cy_durs[0]
-        cy_densities = rsm(self.nos, 40) * self.nos * init_cy_density
+        # init_cy_density = init_rt_density * init_rt_durs[0] / cy_durs[0]
+        init_cy_densities = init_rt_density * self.rt_cy_props
+        cy_densities = rsm(self.nos, 40) * self.nos
+        cy_densities = np.broadcast_to(cy_densities, (4, len(cy_densities)))
+        cy_densities = cy_densities * init_cy_densities.reshape((4, 1))
         vol_offsets = rsm(self.nos, 40) * self.nos
         onset_nCVIs = 40 * rsm(self.nos, 40) * self.nos
         vol_dist_nCVIs = 40 * rsm(self.nos, 40) * self.nos
@@ -79,15 +82,17 @@ class Piece:
         self.timespans = []
         # breakpoint()
         for c in range(self.noc):
+            print('cycle: ', c)
             cy_timespans = []
             for s in range(self.nos):
+                print('section:', s)
                 irama = self.cycles[c].irama[s]
                 if np.size(irama) == 2:
                     irama = irama[0]
                 sec_timespans = []
                 for i in range(irama+1):
                     ts = Timespan(
-                        cy_durs[s], cy_densities[s], vol_offsets[s], onset_nCVIs[s],
+                        cy_durs[s], cy_densities[i][s], vol_offsets[s], onset_nCVIs[s],
                         all_vol_dist_vals[s], ctr_freqs_log2[s], ctr_freq_bws[s],
                         max_freq_oct_bws[s], nCVI_amps[s], nCVI_durs[s], nCVI_bws[s],
                         attack_avgs[s], attack_avg_max_bws[s], i)
@@ -189,7 +194,17 @@ class Piece:
                 ir = self.cycles[c].irama[s]
                 if np.size(ir) == 2:
                     self.irama_transitions.append((c, s))
-        return self.irama_transitions
+        
+        # also, gonna assign the proportion between an entire period of a 
+        # given irama with real time, for figuring out rhythmic things that will
+        # be calculated "flat", that will ultamitely get transformed to slowing.
+        cy_starts = [self.time.cycles_from_mm(2 ** i) for i in range(4)]
+        cy_ends = [self.time.cycles_from_mm(2 ** i) for i in range(1, 5)]
+        cy_durs = [cy_ends[i] - cy_starts[i] for i in range(4)]
+        rt_starts = [self.time.real_time_from_cycles(i) for i in cy_starts]
+        rt_ends = [self.time.real_time_from_cycles(i) for i in cy_ends]
+        rt_durs = [rt_ends[i] - rt_starts[i] for i in range(4)]
+        self.rt_cy_props = np.array([rt_durs[i] / cy_durs[i] for i in range(4)])
 
     def make_klanks(self):
         self.klank_packets = []

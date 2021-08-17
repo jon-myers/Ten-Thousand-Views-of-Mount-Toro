@@ -32,6 +32,13 @@ class Time:
         """Instantaneous tempo at a given time measured from begining of the
         piece."""
         return self.z ** (time ** self.f)
+        
+    def time_from_mm(self, mm):
+        return (math.log(mm) / math.log(self.z)) ** (1 / self.f)
+    
+    def cycles_from_mm(self, mm):
+        time = self.time_from_mm(mm)
+        return self.cycles_from_time(time)
 
     # def b_alt(self, time):
     #     """Number of beats passed since beginning of piece. Anayltic, rather
@@ -212,6 +219,25 @@ def faster_nCVI(d):
 def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times=False):
     """aka 'rsm'. """
     num_of_events = int(num_of_events)
+    #TODO this beneath hur
+    # size_lim = 100
+    # if num_of_events > size_lim:
+    #     if start_times:
+    #         print('gotta fix this shit, bad output, fix start times!')
+    #     out_rsm = []
+    #     for j in range(num_of_events // size_lim):
+    #         seq = rhythmic_sequence_maker(size_lim, nCVI_average) 
+    #         seq = seq * size_lim / num_of_events
+    #         out_rsm.append(seq)
+    #     extra = num_of_events % size_lim
+    #     if extra != 0:
+    #         seq = rhythmic_sequence_maker(extra, nCVI_average)
+    #         seq = seq * extra / num_of_events
+    #     out_rsm = np.concatenate(out_rsm)
+    #     if np.sum(out_rsm) != 1: print("this doesn't work")
+    #     return out_rsm
+    # else:    
+        
     if num_of_events == 1:
         durs = np.array([1.0])
         starts = np.array([0.0])
@@ -246,13 +272,13 @@ def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times
     else:
         return section_durs
 
-# def phrase_compiler(notes_per_seg, dur_per_seg, nCVI):
-#     full_seq = np.array([])
-#     for seg in range(len(notes_per_seg)):
-#         noe = notes_per_seg[seg]
-#         sequence = rhythmic_sequence_maker(noe, nCVI) * dur_per_seg[seg]
-#         full_seq = np.concatenate((full_seq, sequence))
-#     return full_seq
+    # def phrase_compiler(notes_per_seg, dur_per_seg, nCVI):
+    #     full_seq = np.array([])
+    #     for seg in range(len(notes_per_seg)):
+    #         noe = notes_per_seg[seg]
+    #         sequence = rhythmic_sequence_maker(noe, nCVI) * dur_per_seg[seg]
+    #         full_seq = np.concatenate((full_seq, sequence))
+    #     return full_seq
 
 class Density_Curve:
 
