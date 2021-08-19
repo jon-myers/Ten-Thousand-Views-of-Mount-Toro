@@ -6,16 +6,17 @@
 ~kernals = File.open(~jsonPath ++ "kernals.JSON", "r");
 ~kernals = ~kernals.readAllString.parseYAML;
 
-~attacks = Array.fill(~kernals.size, {|i| ~kernals[i]["attack"].asFloat});
-~hpfs = Array.fill(~kernals.size, {|i| ~kernals[i]["hp_freq"].asFloat});
-~lpfs = Array.fill(~kernals.size, {|i| ~kernals[i]["lp_freq"].asFloat});
-~decays = Array.fill(~kernals.size, {|i| ~kernals[i]["dur"].asFloat - ~attacks[i]});
-~durs = Array.fill(~kernals.size-1, {|i| ~kernals[i+1]["onset"].asFloat - ~kernals[i]["onset"].asFloat});
-~durs.add(~durs[~durs.size-1])
+~pc_attacks = Array.fill(~kernals.size, {|i| ~kernals[i]["attack"].asFloat});
+~pc_hpfs = Array.fill(~kernals.size, {|i| ~kernals[i]["hp_freq"].asFloat});
+~pc_lpfs = Array.fill(~kernals.size, {|i| ~kernals[i]["lp_freq"].asFloat});
+~pc_decays = Array.fill(~kernals.size, {|i| ~kernals[i]["rt_dur"].asFloat - ~pc_attacks[i]});
+~pc_durs = Array.fill(~kernals.size-1, {|i| ~kernals[i+1]["rt_onset_time"].asFloat - ~kernals[i]["rt_onset_time"].asFloat});
+~pc_durs.add(~pc_durs[~pc_durs.size-1])
 )
 
-
-
+~kernals.size
+~lpfs[0]
+~hpfs[0]
 
 /*
 (
@@ -40,7 +41,7 @@ x = Synth(\popcorn, [\density, 2]);
 SynthDef.new(\singlePop, {|out=0, attack=0.01, decay=1.0, curve = -4, lpFilterFreq=1600, hpFilterFreq=50|
 	var sig, env, envGen;
 	env = Env.perc(attack, decay);
-	envGen = EnvGen.kr(env, 1.0, doneAction=2);
+	envGen = EnvGen.kr(env, 1.0, doneAction:2);
 	sig = PinkNoise.ar();
 	sig = LPF.ar(sig, lpFilterFreq);
 	sig = HPF.ar(sig, hpFilterFreq);
@@ -55,11 +56,11 @@ Synth(\singlePop, [\attack, 0.16, \decay, 0.25, \curve, -4, \lpFilterFreq, 80 * 
 (
 p = Pbind(
 	\instrument, \singlePop,
-	\attack, Pseq(~attacks, 1),
-	\decay, Pseq(~decays, 1),
-	\lpFilterFreq, Pseq(~lpfs, 1),
-	\hpFilterFreq, Pseq(~hpfs, 1),
-	\dur, Pseq(~durs, 1)
+	\attack, Pseq(~pc_attacks, 1),
+	\decay, Pseq(~pc_decays, 1),
+	\lpFilterFreq, Pseq(~pc_lpfs, 1),
+	\hpFilterFreq, Pseq(~pc_hpfs, 1),
+	\dur, Pseq(~pc_durs, 1)
 ).play
 )
 

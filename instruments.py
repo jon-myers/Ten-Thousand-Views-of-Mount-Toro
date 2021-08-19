@@ -645,6 +645,7 @@ class Klank:
             em_event = self.get_em_event(packet)
             if current_mode != (em_event['mode'], em_event['variation']):
                 current_mode = (em_event['mode'], em_event['variation'])
+                
                 if out_ct != 0:
                     self.g_packets.append(self.packets[out_ct-in_ct:out_ct])
                     in_ct = 0
@@ -662,8 +663,10 @@ class Klank:
         levels = [(levels_0[i], levels_1[i]) for i in range(len(self.g_packets))]
 
         for i, gp in enumerate(self.g_packets):
+            # breakpoint()
             em_event = self.get_em_event(gp[0])
             mode = self.piece.modes[em_event['variation'], em_event['mode']]
+            print(em_event['variation'], em_event['mode'])
             mode_size = np.random.choice([4, 5, 6, 7])
             sub_mode = get_sub_mode(mode, mode_size)
             cs = np.arange(2, len(sub_mode))
@@ -900,7 +903,7 @@ class Klank:
         cycle = (start // 1).astype(int)
         event_map = self.piece.cycles[cycle].event_map
         em_starts = np.array(list(event_map.keys()))
-        event_idx = np.nonzero(start >= em_starts)[0][-1]
+        event_idx = np.nonzero(start%1 >= em_starts)[0][-1]
         key = list(event_map.keys())[event_idx]
         event = event_map[key]
         return event
@@ -972,10 +975,8 @@ class MovingPluck:
         self.assign_frame_timings()
         self.assign_phrase_timings()
         self.get_mode_regions()
-        # breakpoint()
         self.make_phrases()
         self.save_phrases()
-        # breakpoint()
 
 
 

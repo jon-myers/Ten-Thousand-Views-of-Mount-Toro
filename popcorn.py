@@ -5,7 +5,7 @@ from harmony_tools import utils as h_tools
 import json
 from typing import List
 
-avg_center_freq = np.log2(800)
+avg_center_freq = np.log2(200)
 attack_avg = np.log2(0.04)
 # sample_control_spec = {
 # 'dur_tot': 20,
@@ -44,6 +44,7 @@ class Timespan:
     attack_avg: float = 0.01
     attack_avg_max_bw: float = 1.8
     irama: int = 0
+    cy_start_time: float = 0
 
     def build(self):
         # irama transformations
@@ -88,7 +89,8 @@ class Timespan:
         attacks = self.attack_avg * (2 ** attack_mults)
 
         freq_ctr_mults = get_clipped_normal(self.num_of_kernals) * self.center_freq_max_bw
-        freq_ctrs = avg_center_freq + freq_ctr_mults
+        freq_ctrs = self.avg_center_freq + freq_ctr_mults
+        # breakpoint()
 
         highs = 2 ** (freq_ctrs + bws)
         lows = 2 ** (freq_ctrs - bws)
@@ -102,6 +104,7 @@ class Timespan:
             kernal['dur'] = durs[i]
             kernal['amp'] = amps[i]
             kernal['onset'] = onset_times[i]
+            kernal['cy_onset_time'] = self.cy_start_time + onset_times[i]
             kernals.append(kernal)
 
         self.kernals = kernals

@@ -5,23 +5,23 @@
 
 ~klanks = File.open(~jsonPath ++ "klank_packets.JSON", "r");
 ~klanks = ~klanks.readAllString.parseYAML;
-~freqs = Array.fill(~klanks.size, {|i| [~klanks[i]["freqs"].asFloat]});
-~amps = Array.fill(~klanks.size, {|i| [~klanks[i]["amps"].asFloat]});
-~pan = Array.fill(~klanks.size, {|i| ~klanks[i]["pan"].asFloat});
+~k_freqs = Array.fill(~klanks.size, {|i| [~klanks[i]["freqs"].asFloat]});
+~k_amps = Array.fill(~klanks.size, {|i| [~klanks[i]["amps"].asFloat]});
+~k_pan = Array.fill(~klanks.size, {|i| ~klanks[i]["pan"].asFloat});
 
-~durs = Array.fill(~klanks.size, {|i|
+~k_durs = Array.fill(~klanks.size, {|i|
 	var dur = ~klanks[i]["rt_dur"];
 	dur = if(dur[0].asString=="R", {dur.interpret}, {dur.asFloat});
 	dur});
 
-~next_durs = Array.fill(~klanks.size - 1, {|i|
+~k_next_durs = Array.fill(~klanks.size - 1, {|i|
 	var dur = ~klanks[i+1]["rt_dur"];
 	dur = if(dur[0].asString=="R", {dur.interpret}, {dur.asFloat})});
-~next_durs = ~next_durs.add( ~durs[~durs.size - 1]);
+~k_next_durs = ~k_next_durs.add( ~k_durs[~k_durs.size - 1]);
 
-~decays = Array.fill(~klanks.size, {|i| [~klanks[i]["rt_decays"]].asFloat});
-~transient_durs = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_dur"].asFloat});
-~transient_curve = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_curve"].asFloat});
+~k_decays = Array.fill(~klanks.size, {|i| [~klanks[i]["rt_decays"]].asFloat});
+~k_transient_durs = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_dur"].asFloat});
+~k_transient_curve = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_curve"].asFloat});
 );
 
 ~melody = File.open(~jsonPath ++ "melody.JSON", "r");
@@ -77,14 +77,14 @@ Synth(\klank_3, [\freqs, [200, 300, 500], \decays, [0.8, 1.5, 0.9]]);
 
 (
 p = Pbind(
-	\freqs, Pseq(~freqs, 1),
-	\decays, Pseq(~decays, inf),
+	\freqs, Pseq(~k_freqs, 1),
+	\decays, Pseq(~k_decays, inf),
 	\size, Pkey(\freqs).collect({|x| x[0].size.asSymbol}),
 	\instrument, Pkey(\size).collect({|x| \klank_ ++ x}),
-	\dur, Pseq(~durs, 1),
-	\off_dur, Pseq(8*(~next_durs + ~durs), 1),
-	\pan,Pseq(~pan, 1),
-	\amps, Pseq(~amps, 1),
+	\dur, Pseq(~k_durs, 1),
+	\off_dur, Pseq(8*(~k_next_durs + ~k_durs), 1),
+	\pan,Pseq(~k_pan, 1),
+	\amps, Pseq(~k_amps, 1),
 	\transient_dur, Prand([0.005], inf),
 	\transient_curve, Prand([-4, -3, -2, -1, 0, 1, 2, 3, 4], inf)
 ).play

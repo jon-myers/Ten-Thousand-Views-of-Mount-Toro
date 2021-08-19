@@ -32,10 +32,10 @@ class Time:
         """Instantaneous tempo at a given time measured from begining of the
         piece."""
         return self.z ** (time ** self.f)
-        
+
     def time_from_mm(self, mm):
         return (math.log(mm) / math.log(self.z)) ** (1 / self.f)
-    
+
     def cycles_from_mm(self, mm):
         time = self.time_from_mm(mm)
         return self.cycles_from_time(time)
@@ -220,58 +220,67 @@ def rhythmic_sequence_maker(num_of_events, nCVI_average, factor=2.0, start_times
     """aka 'rsm'. """
     num_of_events = int(num_of_events)
     #TODO this beneath hur
-    # size_lim = 100
-    # if num_of_events > size_lim:
-    #     if start_times:
-    #         print('gotta fix this shit, bad output, fix start times!')
-    #     out_rsm = []
-    #     for j in range(num_of_events // size_lim):
-    #         seq = rhythmic_sequence_maker(size_lim, nCVI_average) 
-    #         seq = seq * size_lim / num_of_events
-    #         out_rsm.append(seq)
-    #     extra = num_of_events % size_lim
-    #     if extra != 0:
-    #         seq = rhythmic_sequence_maker(extra, nCVI_average)
-    #         seq = seq * extra / num_of_events
-    #     out_rsm = np.concatenate(out_rsm)
-    #     if np.sum(out_rsm) != 1: print("this doesn't work")
-    #     return out_rsm
-    # else:    
-        
-    if num_of_events == 1:
-        durs = np.array([1.0])
-        starts = np.array([0.0])
-        if start_times == 'both':
-
-            return durs, starts
-        elif start_times == True:
-            return starts
-        else:
-            return durs
-    elif nCVI_average == 0:
-        section_durs = np.ones(num_of_events) / num_of_events
-        starts = np.linspace(0, 1, num_of_events, endpoint=False)
-    else:
-        section_durs = factor ** np.random.normal(size=2)
-        while abs(nCVI(section_durs) - nCVI_average) > 1.0:
-            section_durs = factor ** np.random.normal(size=2)
-        for i in range(num_of_events - 2):
-            next_section_durs = np.append(section_durs,[factor ** np.random.normal()])
-            ct=0
-            while abs(nCVI(next_section_durs) - nCVI_average) > 1.0:
-                ct+=1
-                next_section_durs = np.append(section_durs, [factor ** np.random.normal()])
-            section_durs = next_section_durs
-        section_durs /= np.sum(section_durs)
+    size_lim = 50
+    if num_of_events > size_lim:
+        section_durs = []
+        for j in range(num_of_events // size_lim):
+            seq = rhythmic_sequence_maker(size_lim, nCVI_average)
+            seq = seq * size_lim / num_of_events
+            section_durs.append(seq)
+        extra = num_of_events % size_lim
+        if extra != 0:
+            seq = rhythmic_sequence_maker(extra, nCVI_average)
+            seq = seq * extra / num_of_events
+            section_durs.append(seq)
+        section_durs = np.concatenate(section_durs)
+        # if np.sum(section_durs) != 1:# this is almost certainly not worth it
+        #     section_durs = section_durs / np.sum(section_durs)
         cumsum = np.cumsum(section_durs)[:-1]
         starts = np.insert(cumsum, 0, 0)
-    if start_times == 'both':
-        return section_durs, starts
-    elif start_times:
-        return starts
+        if start_times == 'both':
+            return section_durs, starts
+        elif start_times:
+            return starts
+        else:
+            return section_durs
     else:
-        return section_durs
 
+        if num_of_events == 1:
+            durs = np.array([1.0])
+            starts = np.array([0.0])
+            if start_times == 'both':
+
+                return durs, starts
+            elif start_times == True:
+                return starts
+            else:
+                return durs
+        elif nCVI_average == 0:
+            section_durs = np.ones(num_of_events) / num_of_events
+            starts = np.linspace(0, 1, num_of_events, endpoint=False)
+        else:
+            section_durs = factor ** np.random.normal(size=2)
+            while abs(nCVI(section_durs) - nCVI_average) > 1.0:
+                section_durs = factor ** np.random.normal(size=2)
+            for i in range(num_of_events - 2):
+                next_section_durs = np.append(section_durs,[factor ** np.random.normal()])
+                ct=0
+                while abs(nCVI(next_section_durs) - nCVI_average) > 1.0:
+                    ct+=1
+                    next_section_durs = np.append(section_durs, [factor ** np.random.normal()])
+                section_durs = next_section_durs
+            section_durs /= np.sum(section_durs)
+            cumsum = np.cumsum(section_durs)[:-1]
+            starts = np.insert(cumsum, 0, 0)
+        if start_times == 'both':
+            return section_durs, starts
+        elif start_times:
+            return starts
+        else:
+            return section_durs
+
+
+# print(np.sum(test))
     # def phrase_compiler(notes_per_seg, dur_per_seg, nCVI):
     #     full_seq = np.array([])
     #     for seg in range(len(notes_per_seg)):

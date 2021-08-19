@@ -41,10 +41,11 @@ class Piece:
         # self.format_plucks_JSON()
 
 
-        # self.make_klanks()
+        self.make_klanks()
         # self.save_melody_JSON()
-        # self.make_moving_plucks()
+        self.make_moving_plucks()
         self.make_popcorn()
+        breakpoint()
 
     def make_popcorn(self):
         cy_durs = [s.cy_end - s.cy_start for s in self.sections]
@@ -53,7 +54,7 @@ class Piece:
         # going to have to be an array of 4 item arrays, for each of the possible iramas
         # which all would have different non bendy real times ... oy!
         # TODO ^
-        init_rt_density = 1.75
+        init_rt_density = 0.4
         # init_cy_density = init_rt_density * init_rt_durs[0] / cy_durs[0]
         init_cy_densities = init_rt_density * self.rt_cy_props
         cy_densities = rsm(self.nos, 40) * self.nos
@@ -67,7 +68,7 @@ class Piece:
             vol_dist_vals = rsm(3, vol_dist_nCVIs[i])
             vol_dist_vals /= np.prod(vol_dist_vals) ** (1/3)
             all_vol_dist_vals.append(vol_dist_vals)
-        init_ctr_freq = 150
+        init_ctr_freq = 100
         # init_ctr_freq_log2 = np.log2(init_ctr_freq)
         ctr_freqs = rsm(self.nos, 40) * self.nos * init_ctr_freq
         ctr_freqs_log2 = np.log2(ctr_freqs)
@@ -90,18 +91,43 @@ class Piece:
                 if np.size(irama) == 2:
                     irama = irama[0]
                 sec_timespans = []
+                cy_start_time = self.cycles[c].section_starts[s]
                 for i in range(irama+1):
+                    # breakpoint()
                     ts = Timespan(
                         cy_durs[s], cy_densities[i][s], vol_offsets[s], onset_nCVIs[s],
-                        all_vol_dist_vals[s], ctr_freqs_log2[s], ctr_freq_bws[s],
+                        all_vol_dist_vals[s], ctr_freqs_log2[s] + i, ctr_freq_bws[s],
                         max_freq_oct_bws[s], nCVI_amps[s], nCVI_durs[s], nCVI_bws[s],
-                        attack_avgs[s], attack_avg_max_bws[s], i)
+                        attack_avgs[s], attack_avg_max_bws[s], i, cy_start_time)
                     ts.build()
                     sec_timespans.append(ts)
                 cy_timespans.append(sec_timespans)
             self.timespans.append(cy_timespans)
 
-        breakpoint()
+        self.accumulate_kernals()
+        self.save_popcorn_to_json()
+        # breakpoint()
+
+
+    def accumulate_kernals(self):
+        # get into single list, then add rt onset time tag, then sort.
+        self.kernals = []
+        for ts in self.timespans:
+            for sts in ts:
+                for timespan in sts:
+                    for k in timespan.kernals:
+                        self.kernals.append(k)
+        self.kernals.sort(key=lambda x: x['cy_onset_time'])
+        for k in self.kernals:
+            k['rt_onset_time'] = self.time.real_time_from_cycles(k['cy_onset_time'])
+            rt_end = self.time.real_time_from_cycles(k['dur'] + k['cy_onset_time'])
+            k['rt_dur'] = rt_end - k['rt_onset_time']
+
+    def save_popcorn_to_json(self):
+        path = 'JSON/kernals.JSON'
+        json.dump(self.kernals, open(path, 'w'), cls=h_tools.NpEncoder)
+
+
 
 
     def consolidate_em(self):
@@ -194,8 +220,8 @@ class Piece:
                 ir = self.cycles[c].irama[s]
                 if np.size(ir) == 2:
                     self.irama_transitions.append((c, s))
-        
-        # also, gonna assign the proportion between an entire period of a 
+
+        # also, gonna assign the proportion between an entire period of a
         # given irama with real time, for figuring out rhythmic things that will
         # be calculated "flat", that will ultamitely get transformed to slowing.
         cy_starts = [self.time.cycles_from_mm(2 ** i) for i in range(4)]
@@ -205,11 +231,12 @@ class Piece:
         rt_ends = [self.time.real_time_from_cycles(i) for i in cy_ends]
         rt_durs = [rt_ends[i] - rt_starts[i] for i in range(4)]
         self.rt_cy_props = np.array([rt_durs[i] / cy_durs[i] for i in range(4)])
+        return self.irama_transitions
 
     def make_klanks(self):
         self.klank_packets = []
         # start with just the first one, for irama 0
-        for i in range(2):
+        for i in range(4):
             klank = Klank(self, i)
             self.klank_packets += klank.packets
         file = open('json/klank_packets.JSON', 'w')

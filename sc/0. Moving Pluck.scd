@@ -116,7 +116,6 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 	outPivots
 };
 
-
 ~allNotes = Array.fill(~phrases.size, {|i| ~phrases[i]["notes"].asFloat});
 ~allPivots = Array.fill(~phrases.size, {|i| ~floatifyPivots.value(~phrases[i]["pivots"])});
 ~allDurs = Array.fill(~phrases.size, {|i| ~phrases[i]["rt_durs"].asFloat});
@@ -125,7 +124,24 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 ~allPluckAmps = Array.fill(~phrases.size, {|i| ~phrases[i]["pluckAmps"].asFloat});
 
 ~allFreqEnvs = Array.fill(~phrases.size, {|i|
-	~freqEnv.value(~allNotes[i], ~allPivots[i], ~allDurs[i], ~allWaitProps[i])
+	[~freqEnv.value(~allNotes[i], ~allPivots[i], ~allDurs[i], ~allWaitProps[i])]
 });
-~allPluckEnvs = Array.fill(~phrases.size, {|i| ~pluckEnv.value(~allPluckStarts[i])});
-~allAmpEnvs = Array.fill(~phrases.size, {|i| ~ampEnv.value(~allPluckAmps[i], ~allPluckStarts[i])});
+
+~allPluckEnvs = Array.fill(~phrases.size, {|i| [~pluckEnv.value(~allPluckStarts[i])]});
+~allAmpEnvs = Array.fill(~phrases.size, {|i| [~ampEnv.value(~allPluckAmps[i], ~allPluckStarts[i])]});
+~allReleaseDurs = Array.fill(~phrases.size, {|i| ~phrases[i]["rt_releaseDur"].asFloat})
+
+(
+r = Pbind(
+	\instrument, \moving_pluck,
+	\freqEnv, Pseq(~allFreqEnvs, 1),
+	\pluckEnv, Pseq(~allPluckEnvs, 1),
+	\ampEnv, Pseq(~allAmpEnvs, 1),
+	\releaseDur, Pseq(~allReleaseDurs, 1),
+	\dur, Pseq(~dursBetweenOnsets, 1)
+).play
+)
+
+
+
+
