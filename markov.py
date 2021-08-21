@@ -180,7 +180,9 @@ def make_pluck_phrase(mode, fund, size, dur_tot, nCVI,
     moving_pluck_dict['waitProps'] = wait_props
     moving_pluck_dict['pluckStarts'] = pluck_starts
     moving_pluck_dict['pluckAmps'] = pluck_amps
-    moving_pluck_dict['durTot'] = dur_tot * 3
+    moving_pluck_dict['durTot'] = dur_tot
+    moving_pluck_dict['releaseDur'] = 3 * dur_tot
+    moving_pluck_dict['symps'] = make_symps_from_mode(mode, fund)
     return moving_pluck_dict
 
 
@@ -233,7 +235,7 @@ def make_changing_pluck_phrase(mode_a, mode_b, fund, size, dur_tot, nCVI,
     midpoint = proportion * dur_tot
     starts = start_cumsum(durs)
     crx_idx = np.where(starts > midpoint)[0][0]
-    
+
     crx_durs = durs[crx_idx:]
     last_note_idx = note_seq[crx_idx-1]
     last_note = mode_a[last_note_idx]
@@ -248,9 +250,9 @@ def make_changing_pluck_phrase(mode_a, mode_b, fund, size, dur_tot, nCVI,
 
     # make notes from first half note_seq, second half crx_note_seq.
     notes = np.concatenate((mode_a[note_seq][:crx_idx], mode_b[crx_note_seq]))
-    
+
     notes = registrate(notes*fund, freq_range[0], freq_range[1])
-    
+
 
     num_of_pivots = np.round(pivot_ratio * (size-1))
     in_range_freqs_a = enumerate_freqs(mode_a, fund, freq_range[0], freq_range[1])
@@ -310,6 +312,18 @@ def make_changing_pluck_phrase(mode_a, mode_b, fund, size, dur_tot, nCVI,
     return moving_pluck_dict
 
 
+def make_symps_from_mode(mode, fund):
+    min_freq = 200
+    max_freq = 800
+    freqs = mode * fund;
+    symp_freqs = np.array([])
+    for f in freqs:
+        low_exp = np.ceil(np.log2(min_freq/f)).astype(int)
+        high_exp = np.floor(np.log2(max_freq/f)).astype(int)
+        exp = 2.0 ** np.arange(low_exp, high_exp+1)
+        symp_freqs = np.concatenate((symp_freqs, f*exp))
+    return symp_freqs
+
 def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
     p_transitions, proportions, freq_range=(250, 500),
     start_idx=None, end_idx=None, pivot_ratio=0.25, hold_ratio=0.5, attack_ratio=0.66,
@@ -356,18 +370,18 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
     durs = rsm(size, nCVI) * dur_tot
     midpoints = np.array(proportions) * dur_tot
     starts = start_cumsum(durs)
-    
+
     if len(midpoints) == 1 and np.all(starts < midpoints[0]):
         print('this one actually does happen sometimes')
         return make_pluck_phrase(modes[0], fund, size, dur_tot, nCVI, freq_range,
-                start_idx, end_idx, p_transitions[0], pivot_ratio, hold_ratio, 
+                start_idx, end_idx, p_transitions[0], pivot_ratio, hold_ratio,
                 attack_ratio, pluck_amp)
     else:
         if len(midpoints) > 1 and np.all(starts < midpoints[-1]):
             midpoints = midpoints[:-1]
-        
+
         crx_idxs = [np.where(starts > mp)[0][0] for mp in midpoints]
-        
+
         # crx_durs = durs[crx_idx:]
         all_durs = []
         all_durs.append(durs[:crx_idxs[0]])
@@ -392,18 +406,18 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
                 p_init = np.zeros(len(modes[0]))
                 p_init[start_idx] = 1
                 note_seqs = []
-                
+
                 for i, ad in enumerate(all_durs):
                     note_seq = markov_sequence(p_init, p_transitions[i], len(ad))
                     note_seqs.append(note_seq)
                     if i < len(all_durs) - 1:
                         p_init = np.zeros(len(modes[i+1]))
                         p_init[closest_index(modes[i][note_seq[-1]], modes[i+1])] = 1
-                
+
         all_notes = [modes[i][note_seqs[i]] for i in range(len(all_durs))]
         all_notes = np.concatenate(all_notes)
         all_notes = registrate(all_notes*fund, freq_range[0], freq_range[1])
-        
+
 
 
         in_range_freqs = [enumerate_freqs(modes[i], fund, freq_range[0], freq_range[1]) for i in range(len(all_durs))]
@@ -415,10 +429,10 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
             for i, ad in enumerate(all_durs):
                 lo = sum([len(j) for j in all_durs[:i]])
                 hi = sum([len(j) for j in all_durs[:i+1]])
-                
+
                 if pl < hi-1 and pl >= lo-1:
                     segmented_pivot_locs[i].append(pl)
-        
+
         pivots = []
         for i in range(len(all_notes)-1):
             if i in pivot_locs:
@@ -435,8 +449,8 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
 
         # if np.size(hold_ratio) == 1:
         #     hold_ratio = np.repeat(hold_ratio, size-1)
-        
-        
+
+
         num_of_plucks = np.round(attack_ratio*size).astype(int)
         if num_of_plucks == 0: num_of_plucks = 1
         pluck_amps = np.repeat(pluck_amp, num_of_plucks)
@@ -460,13 +474,14 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
         moving_pluck_dict['pluckAmps'] = pluck_amps
         moving_pluck_dict['durTot'] = dur_tot
         moving_pluck_dict['releaseDur'] = 3 * dur_tot
-        
+        moving_pluck_dict['symps'] = make_symps_from_mode(modes[0], fund)
+
         # here's where I will do the converting to 'real time' stuff
-        
+
 
         return moving_pluck_dict
-        
-    
+
+
 def make_pitch_pairs(mode, transition_table, start_idx=None, end_idx=None):
     if not start_idx is None:
         p_init = np.zeros(len(mode))
@@ -478,8 +493,8 @@ def make_pitch_pairs(mode, transition_table, start_idx=None, end_idx=None):
         while seq[-1] != end_idx:
             seq = markov_sequence(p_init, transition_table, 2)
     return seq
-    
-    
+
+
 # modes = json.load(open('JSON/modes_and_variations.json', 'rb'))
 # # #
 # # mode_a = modes[0][1]

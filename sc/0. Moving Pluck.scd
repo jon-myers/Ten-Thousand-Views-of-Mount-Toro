@@ -73,10 +73,11 @@
 });
 )
 
+~sympBus = Bus.audio(s, 1);
 
 (
 SynthDef.new(\moving_pluck, {|out=0, releaseDur|
-	var spec, freqEnv, sig, transientEnv, allFreqs, pluckEnv, ampEnv, doneEnv;
+	var spec, freqEnv, sig, transientEnv, allFreqs, pluckEnv, ampEnv, doneEnv, symps, sympFreqs;
 	freqEnv = Env.newClear(200);
 	pluckEnv = Env.newClear(200);
 	ampEnv = Env.newClear(200);
@@ -84,26 +85,25 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 	freqEnv = NamedControl.kr(\freqEnv, freqEnv.asArray);
 	pluckEnv = NamedControl.kr(\pluckEnv, pluckEnv.asArray);
 	ampEnv = NamedControl.kr(\ampEnv, ampEnv.asArray);
+	sympFreqs = NamedControl.kr(\sympFreqs, 200.0!14);
 	freqEnv = 2 ** EnvGen.kr(freqEnv);
-	sig = Pluck.ar(EnvGen.kr(ampEnv) * PinkNoise.ar(), EnvGen.kr(pluckEnv), 40.0.reciprocal, freqEnv.reciprocal, 5, 0.38, 1.0);
-	// sig = Streson.ar(sig, (2**~env.asArray[0]).reciprocal);
-	// sig = HPF.ar(sig, 300);
-	// sig = sig * transientEnv;
-	sig = Pan2.ar(sig);
+	transientEnv = EnvGen.kr(Env.new([0, 1, 1], [0.2, 10]), EnvGen.kr(pluckEnv));
+	sig = 0.5 * Pluck.ar(EnvGen.kr(ampEnv) * PinkNoise.ar(), EnvGen.kr(pluckEnv), 40.0.reciprocal, freqEnv.reciprocal, 5, 0.38, 1.0);
+	sig = BHiPass.ar(sig, 400);
+	sig = BLowPass.ar(sig, 3000);
+	symps = Mix.ar(Array.fill(14, {|i| AllpassL.ar(sig, sympFreqs[i].reciprocal, sympFreqs[i].reciprocal, 10)}));
+	sig = Mix.ar([sig, symps]);
+	sig = Pan2.ar(0.5 * sig);
 	Out.ar(out, sig);
-	// Out.ar(~testSympatheticBus.index, sig);
 }).add;
 );
-
-/*~env = ~freqEnv.value(~notes, ~pivots, ~durs, ~waitProps);
-~pEnv = ~pluckEnv.value(~pluckStarts);
-~aEnv = ~ampEnv.value(~pluckAmps, ~pluckStarts);*/
 
 
 (~dir = PathName.new(Document.current.dir);
 ~jsonPath = ~dir.fullPath[..~dir.fullPath.size-3] ++ 'JSON/';
 );
 
+(
 ~phrases = File.open(~jsonPath ++ "moving_pluck_phrases.JSON", "r");
 ~phrases = ~phrases.readAllString.parseYAML;
 
@@ -129,19 +129,19 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 
 ~allPluckEnvs = Array.fill(~phrases.size, {|i| [~pluckEnv.value(~allPluckStarts[i])]});
 ~allAmpEnvs = Array.fill(~phrases.size, {|i| [~ampEnv.value(~allPluckAmps[i], ~allPluckStarts[i])]});
-~allReleaseDurs = Array.fill(~phrases.size, {|i| ~phrases[i]["rt_releaseDur"].asFloat})
+~allReleaseDurs = Array.fill(~phrases.size, {|i| ~phrases[i]["rt_releaseDur"].asFloat});
+~sympFreqs = Array.fill(~phrases.size, {|i| [~phrases[i]["symps"].asFloat]});
+);
 
+~start = 25;
 (
 r = Pbind(
 	\instrument, \moving_pluck,
-	\freqEnv, Pseq(~allFreqEnvs, 1),
-	\pluckEnv, Pseq(~allPluckEnvs, 1),
-	\ampEnv, Pseq(~allAmpEnvs, 1),
-	\releaseDur, Pseq(~allReleaseDurs, 1),
-	\dur, Pseq(~dursBetweenOnsets, 1)
+	\freqEnv, Pseq(~allFreqEnvs[~start..], 1),
+	\pluckEnv, Pseq(~allPluckEnvs[~start..], 1),
+	\ampEnv, Pseq(~allAmpEnvs[~start..], 1),
+	\releaseDur, Pseq(~allReleaseDurs[~start..], 1),
+	\dur, Pseq(~dursBetweenOnsets[~start..], 1),
+	\sympFreqs, Pseq(~sympFreqs[~start..], 1),
 ).play
-)
-
-
-
-
+);

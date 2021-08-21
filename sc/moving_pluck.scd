@@ -118,7 +118,7 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 	// sig = sig * transientEnv;
 	sig = Pan2.ar(sig);
 	Out.ar(out, sig);
-	// Out.ar(~testSympatheticBus.index, sig);
+	Out.ar(~testSympatheticBus.index, sig);
 }).add;
 )
 

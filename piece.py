@@ -44,8 +44,47 @@ class Piece:
         self.make_klanks()
         # self.save_melody_JSON()
         self.make_moving_plucks()
+        self.make_sympathetics()
         self.make_popcorn()
         breakpoint()
+
+    def make_sympathetics(self):
+        regions = self.consolidated_em
+        min_freq = 200
+        max_freq = 800
+        self.symp_packets = []
+        for i, r in enumerate(regions):
+            var_idx = r['variation']
+            mode_idx = r['mode']
+            mode = self.modes[var_idx][mode_idx]
+            freqs = mode * self.fund
+            symp_freqs = np.array([])
+            for f in freqs:
+                low_exp = np.ceil(np.log2(min_freq/f)).astype(int)
+                high_exp = np.floor(np.log2(max_freq/f)).astype(int)
+                exp = 2.0 ** np.arange(low_exp, high_exp+1)
+                symp_freqs = np.concatenate((symp_freqs, f*exp))
+            cy_start = r['cy_start']
+            rt_start = self.time.real_time_from_cycles(cy_start)
+            if i == len(regions)-1:
+                rt_end = self.time.dur_tot
+            else:
+                cy_end = regions[i+1]['cy_start']
+                rt_end = self.time.real_time_from_cycles(cy_end)
+            rt_dur = rt_end - rt_start
+            obj = {'freqs': symp_freqs, 'dur': rt_dur}
+            self.symp_packets.append(obj)
+        path = 'JSON/sympathetics.JSON'
+        json.dump(self.symp_packets, open(path, 'w'), cls=h_tools.NpEncoder)
+
+    
+
+
+
+
+
+
+
 
     def make_popcorn(self):
         cy_durs = [s.cy_end - s.cy_start for s in self.sections]

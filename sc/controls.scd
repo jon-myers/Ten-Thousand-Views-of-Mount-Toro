@@ -19,7 +19,7 @@ q = Pbind(
 	\dur, Pseq(~k_durs, 1),
 	\off_dur, Pseq(8*(~k_next_durs + ~k_durs), 1),
 	\pan,Pseq(~k_pan, 1),
-	\amps, Pseq(~k_amps*0.5, 1),
+	\amps, Pseq(~k_amps, 1),
 	\transient_dur, Prand([0.005], inf),
 	\transient_curve, Prand([-4, -3, -2, -1, 0, 1, 2, 3, 4], inf)
 ).play
@@ -32,8 +32,9 @@ r = Pbind(
 	\pluckEnv, Pseq(~allPluckEnvs, 1),
 	\ampEnv, Pseq(~allAmpEnvs, 1),
 	\releaseDur, Pseq(~allReleaseDurs, 1),
-	\dur, Pseq(~dursBetweenOnsets, 1)
+	\dur, Pseq(~dursBetweenOnsets, 1),
+	\sympFreqs, Pseq(~sympFreqs, 1),
 ).play
-)
+);
 
 )
