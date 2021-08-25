@@ -83,6 +83,8 @@ def registrate(note, low, high):
     high = np.floor(np.log2((high/note).astype(float)))
     oct = np.where(low==high, low, np.random.randint(low, high+1))
     return note * (2 ** oct)
+    
+    # registrate where you care about previous so, so you don't jump around too much!!!
 
 def enumerate_freqs(mode, fund, low, high, for_pivots=True):
     mode = np.array(mode)
@@ -370,6 +372,9 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
     durs = rsm(size, nCVI) * dur_tot
     midpoints = np.array(proportions) * dur_tot
     starts = start_cumsum(durs)
+    
+    if len(midpoints) > 1 and np.all(starts < midpoints[-1]):
+        midpoints = midpoints[:-1]
 
     if len(midpoints) == 1 and np.all(starts < midpoints[0]):
         print('this one actually does happen sometimes')
@@ -377,8 +382,6 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
                 start_idx, end_idx, p_transitions[0], pivot_ratio, hold_ratio,
                 attack_ratio, pluck_amp)
     else:
-        if len(midpoints) > 1 and np.all(starts < midpoints[-1]):
-            midpoints = midpoints[:-1]
 
         crx_idxs = [np.where(starts > mp)[0][0] for mp in midpoints]
 

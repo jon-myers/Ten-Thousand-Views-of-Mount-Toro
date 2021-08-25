@@ -479,490 +479,494 @@ class Pluck:
         return base_val * (2 ** (offset - subtract))
 
 
-class Klank:
-
-    def __init__(self, piece, irama):
-        self.piece = piece
-        self.irama = irama
-        self.assign_frame_timings()
-        self.current_mode = None
-        self.levels = np.arange(1, 5) / 5
-        self.pan_pos = np.arange(-3, 4) / 4
-
-        if self.irama == 0:
-            self.rt_td = 4
-            self.tot_events = self.rt_dur * self.rt_td
-
-        self.repeatable_make_packets(0.25)
-        self.alt_add_notes()
-        self.add_real_times()
-
-        # self.make_packets()
-        # self.add_notes()
-        # self.add_spec()
-        # self.add_real_times()
-
-
-
-    def assign_frame_timings(self):
-        trans = self.piece.get_irama_transitions()
-        fine_tuning = np.random.random(size=3)
-        if self.irama == 0:
-            start = (0, 0, 0)
-        else:
-            start = trans[self.irama-1]
-            start = (start[0], start[1], fine_tuning[self.irama-1])
-        if self.irama == 3:
-            end = (self.piece.noc+1, 0, 0)
-        else:
-            end = trans[self.irama]
-            end = (end[0], end[1], fine_tuning[self.irama])
-
-        start_section = self.piece.sections[start[1]]
-        ss_beginning = start_section.cy_start
-        ss_ending = start_section.cy_end
-        ss_dur = ss_ending - ss_beginning
-
-        end_section = self.piece.sections[end[1]]
-        es_beginning = end_section.cy_start
-        es_ending = end_section.cy_end
-        es_dur = es_ending - es_beginning
-
-        self.cy_start = start[0] + ss_beginning + ss_dur * start[2]
-        self.cy_end = end[0] + es_beginning + es_dur * end[2]
-        self.cy_dur = self.cy_end - self.cy_start
-
-        self.rt_start = self.piece.time.real_time_from_cycles(self.cy_start)
-        self.rt_end = self.piece.time.real_time_from_cycles(self.cy_end)
-        self.rt_dur = self.rt_end - self.rt_start
-
-
-
-    def repeatable_make_packets(self, repeat_chance=0.25, rest_ratio=0.15):
-        dur_min = 1
-        dur_octs = 4
-        dur_tot = self.rt_dur * (1 - rest_ratio)
-        avg_dur = dur_min * (2 ** (dur_octs / 2))
-        num_events = np.round(dur_tot / avg_dur)
-        dur_pool = rsm(num_events, 60)
-        np.random.shuffle(dur_pool)
-
-
-        events = []
-        ct = 0
-        for i in range(len(dur_pool)):
-            if i == 0 or np.random.rand() > repeat_chance:
-                obj = {}
-                obj['dur'] = dur_pool[ct]
-                obj['is_copy'] = False
-                obj['rep_choice_weight'] = np.random.rand()
-                obj['unique_id'] = ct
-                obj['loc_id'] = i
-                obj['original_loc_id'] = i
-                events.append(obj)
-                ct += 1
-            else:
-                iterable = (k['rep_choice_weight'] for k in events)
-                weights = np.fromiter(iterable, float)
-                weights /= sum(weights)
-                index = np.random.choice(np.arange(len(events)), p=weights)
-                obj = events[index].copy()
-                obj['is_copy'] = True
-                obj['loc_id'] = i
-
-                events.append(obj)
-        durs = np.fromiter((i['dur'] for i in events), float)
-        durs *= dur_tot * np.sum(durs)
-        for i, obj in enumerate(events):
-            obj['dur'] = durs[i]
-
-        max_num_rests = len(durs) + 1#inclusive
-        min_num_rests = np.round(len(durs)/4)
-        if min_num_rests == 0: min_num_rests = 1
-        num_rest_octs = np.log2(max_num_rests / min_num_rests)
-        num_rests = min_num_rests * 2 ** np.random.uniform(num_rest_octs)
-        num_rests = np.round(num_rests).astype(int)
-        cy_rests = rsm(num_rests, 60) * rest_ratio * self.cy_dur
-        rest_locs = rng.choice(np.arange(len(events)+1), num_rests, False)
-        cy_time = 0
-        # self.packets = []
-        self.events = []
-        r_ct = 0
-        for i, event in enumerate(events):
-            event['packets'] = []
-            if event['is_copy'] == True:
-                original_event = events[event['original_loc_id']]
-                event['phrase'] = original_event['phrase']
-            else:
-                dur = event['dur']
-                dc_durs, dc_edges = self.make_pc_edges(dur)
-                subdivs = np.random.choice(np.arange(len(dc_durs) + 1, len(dc_durs) * 2 + 1))
-                nCVI_low = 20
-                nCVI_high = 60
-                nCVI_tup = (nCVI_low, nCVI_high)
-                phrase = phrase_compiler(dc_durs, dc_edges, subdivs, 24, nCVI_tup)
-                event['phrase'] = phrase
-            cy_phrase_durs = event['phrase'] * self.cy_dur / self.rt_dur
-            cy_phrase_starts = cy_time + np.concatenate(([0], np.cumsum(cy_phrase_durs)[:-1]))
-            cy_time += dur * self.cy_dur / self.rt_dur
-
-            for j in range(len(event['phrase'])):
-                packet = {}
-                packet['cy_start'] = cy_phrase_starts[j]
-                packet['cy_dur'] = cy_phrase_durs[j]
-                packet['type'] = 'note'
-                packet['phrase_num'] = i
-                packet['original_loc_id'] = event['original_loc_id']
-                packet['loc_id'] = event['loc_id']
-                packet['is_copy'] = event['is_copy']
-                packet['irama'] = self.irama
-                event['packets'].append(packet)
-            if i in rest_locs:
-                packet = {}
-                packet['cy_start'] = cy_time
-                packet['cy_dur'] = cy_rests[r_ct]
-                packet['type'] = 'rest'
-                packet['phrase_num'] = i
-                packet['original_loc_id'] = event['original_loc_id']
-                packet['loc_id'] = event['loc_id']
-                packet['is_copy'] = event['is_copy']
-                packet['irama'] = self.irama
-                event['packets'].append(packet)
-                cy_time += cy_rests[r_ct]
-                r_ct += 1
-            self.events.append(event)
-
-    def alt_add_notes(self):
-        # first, put into grouped_packets, according to when mode changes
-        self.packets = []
-        for e in self.events:
-            for packet in e['packets']:
-                self.packets.append(packet)
-
-        out_ct, in_ct, current_mode = 0, 0, None
-        self.g_packets = [] # grouped packets
-        for packet in self.packets:
-            em_event = self.get_em_event(packet)
-            if current_mode != (em_event['mode'], em_event['variation']):
-                current_mode = (em_event['mode'], em_event['variation'])
-                
-                if out_ct != 0:
-                    self.g_packets.append(self.packets[out_ct-in_ct:out_ct])
-                    in_ct = 0
-            out_ct += 1
-            in_ct += 1
-
-        self.g_packets.append(self.packets[out_ct-in_ct:out_ct])
-
-        decay_prop = 4
-
-        levels_0 = h_tools.dc_alg(len(self.levels), len(self.g_packets))
-        levels_0 = self.levels[levels_0]
-        levels_1 = h_tools.dc_alg(len(self.levels), len(self.g_packets))
-        levels_1 = self.levels[levels_1]
-        levels = [(levels_0[i], levels_1[i]) for i in range(len(self.g_packets))]
-
-        for i, gp in enumerate(self.g_packets):
-            # breakpoint()
-            em_event = self.get_em_event(gp[0])
-            mode = self.piece.modes[em_event['variation'], em_event['mode']]
-            print(em_event['variation'], em_event['mode'])
-            mode_size = np.random.choice([4, 5, 6, 7])
-            sub_mode = get_sub_mode(mode, mode_size)
-            cs = np.arange(2, len(sub_mode))
-            cs_min = 2
-            cs_max = np.round((len(sub_mode) - cs_min) + cs_min)
-            if cs_max == cs_min: cs_max = cs_min + 1
-            cs = np.arange(cs_min, cs_max).astype(int)
-            ns = Note_Stream(sub_mode, self.piece.fund, None, cs)
-            reg_mins = 75 * 2 ** np.random.uniform(0, 1.5, size=2)
-            reg_maxs = 566 * 2 ** np.random.uniform(0, 1.5, size=2)
-            reg_min = np.linspace(reg_mins[0], reg_mins[1], len(gp))
-            reg_max = np.linspace(reg_maxs[0], reg_maxs[1], len(gp))
-
-            this_prop = spread(decay_prop, 2)
-            pan_gamut_size = np.random.choice(np.arange(4, 10))
-            pan_gamut = np.random.random(size=pan_gamut_size) * 2 - 1
-            pans = pan_gamut[h_tools.dc_alg(len(pan_gamut), len(gp))]
-            transient_dur = spread(0.005, 6)
-            transient_curve = spread(0, 4, 'linear')
-
-
-            loc_id = gp[0]['loc_id']
-            p_ct = 0
-            for p, packet in enumerate(gp):
-                packet['mode'] = mode
-                if packet['loc_id'] != loc_id:
-                    p_ct = 0
-                    loc_id = packet['loc_id']
-                if packet['is_copy'] == True:
-                    if packet['type'] == 'rest':
-                        packet['freqs'] = [100]
-                        packet['amps'] = [0.5]
-                        packet['pan'] = 0.0
-                        packet['cy_decays'] = [1.0]
-                        packet['transient_dur'] = 0.005
-                        packet['transient_curve'] = 0.0
-
-                    else:
-                        orig_event = self.events[packet['original_loc_id']]
-                        if np.all(orig_event['packets'][p_ct]['mode'] == mode):
-                            source = orig_event['packets'][p_ct]
-                            packet['freqs'] = source['freqs']
-                            packet['amps'] = source['amps']
-                            packet['pan'] = source['pan']
-                            packet['transient_dur'] = source['transient_dur']
-                            packet['transient_curve'] = source['transient_curve']
-                            packet['cy_decays'] = source['cy_decays']
-                        else:
-                            reg_tup = (reg_min[p], reg_max[p])
-                            packet['freqs'] = ns.next_chord(reg_tup)
-                            dur = packet['cy_dur']
-                            size = np.size(packet['freqs'])
-                            decays = np.ones(size) * dur * spread(this_prop, 2)
-                            decays = np.array([spread(i, 2.0) for i in decays])
-                            packet['cy_decays'] = decays
-                            this_levels = (np.clip(spread(levels[i][k], 3), 0, 1) for k in range(2))
-                            this_levels = tuple(this_levels)
-                            amps = np.linspace(this_levels[0], this_levels[1], size)
-                            amps = np.array([np.clip(spread(i, 2.0), 0, 1) for i in amps])
-
-                            packet['amps'] = amps
-                            packet['pan'] = pans[p]
-                            packet['transient_dur'] = spread(transient_dur, 4)
-                            packet['transient_curve'] = spread(transient_curve, 2, 'linear')
-
-                else:
-                    if packet['type'] == 'note':
-                        reg_tup = (reg_min[p], reg_max[p])
-                        packet['freqs'] = ns.next_chord(reg_tup)
-                    else:
-                        packet['freqs'] = 100
-
-                    dur = packet['cy_dur']
-                    size = np.size(packet['freqs'])
-                    decays = np.ones(size) * dur * spread(this_prop, 2)
-                    decays = np.array([spread(i, 2.0) for i in decays])
-                    packet['cy_decays'] = decays
-                    this_levels = (np.clip(spread(levels[i][k], 3), 0, 1) for k in range(2))
-                    this_levels = tuple(this_levels)
-                    amps = np.linspace(this_levels[0], this_levels[1], size)
-                    amps = np.array([np.clip(spread(i, 2.0), 0, 1) for i in amps])
-
-                    packet['amps'] = amps
-                    packet['pan'] = pans[p]
-                    packet['transient_dur'] = spread(transient_dur, 4)
-                    packet['transient_curve'] = spread(transient_curve, 2, 'linear')
-                p_ct += 1
-
-    def make_packets(self):
-        """Just the temporality. Add notes and other stats later."""
-        # this works for irama 1. For later iramas, where repetition is wanted,
-        # this has to happen hierarchically rather than sequentially.
-
-        rest_ratio = 0.15 # proportion of klank that consists of rests
-        # dur_range = (3, 20)
-        dur_min = 2.5
-        dur_octs = 3
-        rt_durs = []
-        remaining = self.rt_dur
-        while sum(rt_durs) < self.rt_dur * (1 - rest_ratio):
-            remaining = self.rt_dur * (1 - rest_ratio) - sum(rt_durs)
-            if remaining >= dur_min and remaining < dur_min * 2 ** dur_octs:
-                next = remaining
-            elif remaining < dur_min:
-                rt_durs[-1] += remaining
-                break
-            else:
-                next = dur_min * 2 ** np.random.uniform(dur_octs)
-            rt_durs.append(next)
-
-        max_num_rests = len(rt_durs) + 1#inclusive
-        min_num_rests = np.round(len(rt_durs)/3)
-        num_rests = np.random.randint(min_num_rests, max_num_rests)
-        cy_rests = rsm(num_rests, 60) * rest_ratio * self.cy_dur
-        rest_locs = rng.choice(np.arange(len(rt_durs)+1), size=num_rests, replace=False)
-        cy_time = 0
-        self.packets = []
-        r_ct = 0
-        for i, rt_dur in enumerate(rt_durs):
-            dc_durs, dc_edges = self.make_pc_edges(rt_dur)
-            subdivs = np.random.choice([3, 4, 5, 6])
-            nCVI_low = 20
-            nCVI_high = 60
-            phrase = phrase_compiler(dc_durs, dc_edges, subdivs, 24, (nCVI_low, nCVI_high))
-            cy_phrase_durs = phrase * self.cy_dur / self.rt_dur
-            cy_phrase_starts = cy_time + np.concatenate(([0], np.cumsum(cy_phrase_durs)[:-1]))
-            cy_time += rt_dur * self.cy_dur / self.rt_dur
-            # phrase_durs.append(cy_phrase_durs)
-            # phrase_starts.append(cy_phrase_starts)
-            for j in range(len(phrase)):
-                packet = {}
-                packet['cy_start'] = cy_phrase_starts[j]
-                packet['cy_dur'] = cy_phrase_durs[j]
-                packet['type'] = 'note'
-                packet['phrase_num'] = i
-                self.packets.append(packet)
-            if i in rest_locs:
-                packet = {}
-                packet['cy_start'] = cy_time
-                packet['cy_dur'] = cy_rests[r_ct]
-                packet['type'] = 'rest'
-                packet['phrase_num'] = i
-                self.packets.append(packet)
-                cy_time += cy_rests[r_ct]
-                r_ct += 1
-
-
-    def add_notes(self):
-        outer_ct = 0
-        inner_ct = 0
-        current_mode = None
-        self.grouped_packets = []
-        for packet in self.packets:
-
-            event = self.get_em_event(packet)
-            # mode = self.piece.modes[var, event['mode']]
-            if current_mode != (event['mode'], event['variation']):
-                # sub_mode = get_sub_mode(mode, 5)
-                # packet['submode'] = sub_mode
-                current_mode = (event['mode'], event['variation'])
-                if outer_ct != 0:
-                    self.grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
-                    inner_ct = 0
-            outer_ct += 1
-            inner_ct +=1
-
-        self.grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
-
-        for i, gp in enumerate(self.grouped_packets):
-            event = self.get_em_event(gp[0])
-            mode = self.piece.modes[event['variation'], event['mode']]
-            mode_size = np.random.choice([4, 5, 6, 7])
-            sub_mode = get_sub_mode(mode, mode_size)
-            cs = np.arange(2, len(sub_mode))
-            cs_min = 2
-            cs_max = np.round((len(sub_mode) - cs_min) + cs_min)
-            if cs_max == cs_min: cs_max = cs_min + 1
-            cs = np.arange(cs_min, cs_max).astype(int)
-            gamut_size = np.random.choice(np.arange(6, 18))
-            ns = Note_Stream(sub_mode, self.piece.fund, chord_sizes=cs)
-            register = (100, 500) # just for now
-            reg_mins = 75 * 2 ** np.random.uniform(0, 1.5, size=2)
-            reg_maxs = 566 * 2 ** np.random.uniform(0, 1.5, size=2)
-            reg_min = np.linspace(reg_mins[0], reg_mins[1], len(gp))
-            reg_max = np.linspace(reg_maxs[0], reg_maxs[1], len(gp))
-            for p, packet in enumerate(gp):
-                if packet['type'] == 'note':
-                    packet['freqs'] = ns.next_chord((reg_min[p], reg_max[p]))
-                else:
-                    packet['freqs'] = [100]
-
-        # now assign the sub mode to each
-
-
-    def add_spec(self, prop=5, amp=0.5):
-        """adds decay times and amp levels for Klank supercollider Ugen. """
-        #for a start, just have random delays, less than total dur.
-        levels_0 = h_tools.dc_alg(len(self.levels), len(self.grouped_packets))
-        levels_0 = self.levels[levels_0]
-        levels_1 = h_tools.dc_alg(len(self.levels), len(self.grouped_packets))
-        levels_1 = self.levels[levels_1]
-        levels = [(levels_0[i], levels_1[i]) for i in range(len(self.grouped_packets))]
-
-        pan_pos = h_tools.dc_alg(len(self.pan_pos), len(self.grouped_packets))
-        pan_pos = self.pan_pos[pan_pos]
-
-        for i, gp in enumerate(self.grouped_packets):
-            this_prop = spread(prop, 2)
-            pan_gamut_size = np.random.choice(np.arange(4, 10))
-            pan_gamut = np.random.random(size=pan_gamut_size) * 2 - 1
-            pans = pan_gamut[h_tools.dc_alg(len(pan_gamut), len(gp))]
-            transient_dur = spread(0.005, 6)
-            transient_curve = spread(0, 4, 'linear')
-            for p, packet in enumerate(gp):
-                dur = packet['cy_dur']
-                decays = np.ones(np.size(packet['freqs'])) * dur * spread(this_prop, 2)
-                decays = np.array([spread(i, 2.0) for i in decays])
-                packet['cy_decays'] = decays
-
-                this_levels = (np.clip(spread(levels[i][0], 3), 0, 1), np.clip(spread(levels[i][1], 3), 0, 1))
-                amps = np.linspace(this_levels[0], this_levels[1], np.size(packet['freqs']))
-                amps = np.array([np.clip(spread(i, 2.0), 0, 1) for i in amps])
-
-                packet['amps'] = amps
-                packet['pan'] = pans[p]
-                packet['transient_dur'] = spread(transient_dur, 4)
-                packet['transient_curve'] = spread(transient_curve, 2, 'linear')
-
-
-    def get_em_event(self, packet):
-        """Started calling it `em_event` instead of just `event` to signify
-        that they are different things."""
-        start = packet['cy_start']
-        cycle = (start // 1).astype(int)
-        event_map = self.piece.cycles[cycle].event_map
-        em_starts = np.array(list(event_map.keys()))
-        event_idx = np.nonzero(start%1 >= em_starts)[0][-1]
-        key = list(event_map.keys())[event_idx]
-        event = event_map[key]
-        return event
-
-    def add_real_times(self):
-        time = self.piece.time
-        for packet in self.packets:
-            cy_start = packet['cy_start']
-            cy_end = cy_start + packet['cy_dur']
-            rt_start = time.real_time_from_cycles(cy_start)
-            rt_end = time.real_time_from_cycles(cy_end)
-            rt_dur = rt_end - rt_start
-            packet['rt_start'] = rt_start
-            packet['rt_dur'] = rt_dur
-            cy_dec_ends = packet['cy_decays'] + cy_start
-            rt_dec_ends = [time.real_time_from_cycles(i) for i in cy_dec_ends]
-            rt_dec_ends = np.array(rt_dec_ends)
-            rt_dec_durs = rt_dec_ends - rt_start
-            packet['rt_decays'] = rt_dec_durs
-            if packet['type'] == 'rest':
-                packet['rt_dur'] = "Rest(" + str(packet['rt_dur']) + ")"
-
-
-
-    def make_pc_edges(self, rt_dur, irama=0):
-        # for irama 1, shape supplied to phrase compiler should be either
-        # down-up-down, down-up-middle, middle-up-down
-        if irama == 0:
-            midpoint = np.random.uniform(0.25, 0.75)
-            dc_durs = np.array([midpoint, 1-midpoint]) * rt_dur
-            down = np.random.uniform(1.5, 3) / 3
-            middle = np.random.uniform(3, 4.5) / 3
-            up = np.random.uniform(4.5, 6) / 3
-            profiles = [[down, up, down], [down, up, middle], [middle, up, down]]
-            dc_edges = profiles[np.random.choice(np.arange(3))]
-            return dc_durs, dc_edges
-
-    def make_generalized_pc_edges(self, rt_dur, irama=0):
-        min_seg_dur = 2
-        max_seg_dur = 6
-        seg_dur_octs = np.log2(max_seg_dur / min_seg_dur)
-        avg_seg_dur = min_seg_dur * (2 ** np.random.uniform(seg_dur_octs))
-        num_segs = np.round(rt_dur / avg_seg_dur).astype(int)
-        if num_segs == 0: num_segs = 1
-        dc_durs = rsm(num_segs, 15) * rt_dur
-
-        min_td = 0.25
-        max_td = 6
-        td_octs = np.log2(max_td / min_td)
-        dc_edges = [min_td * 2 ** np.random.uniform(td_octs) for i in range(num_segs + 1)]
-        # should I sculpt these such that the mins end up at the beginning and
-        # end, so that phrases ease in and out?
-        # Or, should I accept what the fates ordain, and go about my merry way?
-        # for now, stick with the fates.
-
-        return dc_durs, dc_edges
-
-    def save_as_json(self, path):
-        json.dump(self.packets, open(path, 'w'), cls=h_tools.NpEncoder)
+# class Klank:
+# 
+#     def __init__(self, piece, irama, fine_tuning):
+#         self.piece = piece
+#         self.irama = irama
+#         self.fine_tuning = fine_tuning
+#         self.assign_frame_timings()
+#         self.current_mode = None
+#         self.levels = np.arange(1, 5) / 5
+#         self.pan_pos = np.arange(-3, 4) / 4
+# 
+# 
+#         if self.irama == 0:
+#             self.rt_td = 4
+#             self.tot_events = self.rt_dur * self.rt_td
+# 
+#         self.repeatable_make_packets(0.25)
+#         self.alt_add_notes()
+#         self.add_real_times()
+# 
+#         # self.make_packets()
+#         # self.add_notes()
+#         # self.add_spec()
+#         # self.add_real_times()
+# 
+# 
+# 
+#     def assign_frame_timings(self):
+#         trans = self.piece.get_irama_transitions()
+#         if self.irama == 0:
+#             start = (0, 0, 0)
+#         else:
+#             start = trans[self.irama-1]
+#             start = (start[0], start[1], self.fine_tuning[self.irama-1])
+#         if self.irama == 3:
+#             end = (self.piece.noc+1, 0, 0)
+#         else:
+#             end = trans[self.irama]
+#             end = (end[0], end[1], self.fine_tuning[self.irama])
+# 
+#         start_section = self.piece.sections[start[1]]
+#         ss_beginning = start_section.cy_start
+#         ss_ending = start_section.cy_end
+#         ss_dur = ss_ending - ss_beginning
+# 
+#         end_section = self.piece.sections[end[1]]
+#         es_beginning = end_section.cy_start
+#         es_ending = end_section.cy_end
+#         es_dur = es_ending - es_beginning
+# 
+#         self.cy_start = start[0] + ss_beginning + ss_dur * start[2]
+#         self.cy_end = end[0] + es_beginning + es_dur * end[2]
+#         self.cy_dur = self.cy_end - self.cy_start
+# 
+#         self.rt_start = self.piece.time.real_time_from_cycles(self.cy_start)
+#         self.rt_end = self.piece.time.real_time_from_cycles(self.cy_end)
+#         self.rt_dur = self.rt_end - self.rt_start
+# 
+# 
+# 
+#     def repeatable_make_packets(self, repeat_chance=0.25, rest_ratio=0.3):
+#         dur_min = 1
+#         dur_octs = 4
+#         dur_tot = self.rt_dur * (1 - rest_ratio)
+#         avg_dur = dur_min * (2 ** (dur_octs / 2))
+#         num_events = np.round(dur_tot / avg_dur)
+#         dur_pool = rsm(num_events, 60)
+#         np.random.shuffle(dur_pool)
+# 
+# 
+#         events = []
+#         ct = 0
+#         for i in range(len(dur_pool)):
+#             if i == 0 or np.random.rand() > repeat_chance:
+#                 obj = {}
+#                 obj['dur'] = dur_pool[ct]
+#                 obj['is_copy'] = False
+#                 obj['rep_choice_weight'] = np.random.rand()
+#                 obj['unique_id'] = ct
+#                 obj['loc_id'] = i
+#                 obj['original_loc_id'] = i
+#                 events.append(obj)
+#                 ct += 1
+#             else:
+#                 iterable = (k['rep_choice_weight'] for k in events)
+#                 weights = np.fromiter(iterable, float)
+#                 weights /= sum(weights)
+#                 index = np.random.choice(np.arange(len(events)), p=weights)
+#                 obj = events[index].copy()
+#                 obj['is_copy'] = True
+#                 obj['loc_id'] = i
+# 
+#                 events.append(obj)
+#         durs = np.fromiter((i['dur'] for i in events), float)
+#         durs *= dur_tot * np.sum(durs)
+#         for i, obj in enumerate(events):
+#             obj['dur'] = durs[i]
+# 
+#         max_num_rests = len(durs) + 1#inclusive
+#         min_num_rests = np.round(len(durs)/4)
+#         if min_num_rests == 0: min_num_rests = 1
+#         num_rest_octs = np.log2(max_num_rests / min_num_rests)
+#         num_rests = min_num_rests * 2 ** np.random.uniform(num_rest_octs)
+#         num_rests = np.round(num_rests).astype(int)
+#         cy_rests = rsm(num_rests, 60) * rest_ratio * self.cy_dur
+#         rest_locs = rng.choice(np.arange(len(events)+1), num_rests, False)
+#         cy_time = 0
+#         # self.packets = []
+#         self.events = []
+#         r_ct = 0
+#         for i, event in enumerate(events):
+#             event['packets'] = []
+#             if event['is_copy'] == True:
+#                 original_event = events[event['original_loc_id']]
+#                 event['phrase'] = original_event['phrase']
+#             else:
+#                 dur = event['dur']
+#                 dc_durs, dc_edges = self.make_pc_edges(dur)
+#                 subdivs = np.random.choice(np.arange(len(dc_durs) + 1, len(dc_durs) * 2 + 1))
+#                 nCVI_low = 20
+#                 nCVI_high = 60
+#                 nCVI_tup = (nCVI_low, nCVI_high)
+#                 phrase = phrase_compiler(dc_durs, dc_edges, subdivs, 24, nCVI_tup)
+#                 event['phrase'] = phrase
+#             cy_phrase_durs = event['phrase'] * self.cy_dur / self.rt_dur
+#             cy_phrase_starts = cy_time + np.concatenate(([0], np.cumsum(cy_phrase_durs)[:-1]))
+#             cy_time += dur * self.cy_dur / self.rt_dur
+# 
+# 
+#             for j in range(len(event['phrase'])):
+#                 packet = {}
+#                 packet['cy_start'] = cy_phrase_starts[j]
+#                 packet['cy_dur'] = cy_phrase_durs[j]
+#                 packet['type'] = 'note'
+#                 packet['phrase_num'] = i
+#                 packet['original_loc_id'] = event['original_loc_id']
+#                 packet['loc_id'] = event['loc_id']
+#                 packet['is_copy'] = event['is_copy']
+#                 packet['irama'] = self.irama
+#                 event['packets'].append(packet)
+#             if i in rest_locs:
+#                 packet = {}
+#                 packet['cy_start'] = cy_time
+#                 packet['cy_dur'] = cy_rests[r_ct]
+#                 packet['type'] = 'rest'
+#                 packet['phrase_num'] = i
+#                 packet['original_loc_id'] = event['original_loc_id']
+#                 packet['loc_id'] = event['loc_id']
+#                 packet['is_copy'] = event['is_copy']
+#                 packet['irama'] = self.irama
+#                 event['packets'].append(packet)
+#                 cy_time += cy_rests[r_ct]
+#                 r_ct += 1
+#             self.events.append(event)
+#         breakpoint()
+# 
+#     def alt_add_notes(self):
+#         # first, put into grouped_packets, according to when mode changes
+#         self.packets = []
+#         for e in self.events:
+#             for packet in e['packets']:
+#                 self.packets.append(packet)
+# 
+#         out_ct, in_ct, current_mode = 0, 0, None
+#         self.g_packets = [] # grouped packets
+#         for packet in self.packets:
+#             em_event = self.get_em_event(packet)
+#             if current_mode != (em_event['mode'], em_event['variation']):
+#                 current_mode = (em_event['mode'], em_event['variation'])
+# 
+#                 if out_ct != 0:
+#                     self.g_packets.append(self.packets[out_ct-in_ct:out_ct])
+#                     in_ct = 0
+#             out_ct += 1
+#             in_ct += 1
+# 
+#         self.g_packets.append(self.packets[out_ct-in_ct:out_ct])
+# 
+#         decay_prop = 4
+# 
+#         levels_0 = h_tools.dc_alg(len(self.levels), len(self.g_packets))
+#         levels_0 = self.levels[levels_0]
+#         levels_1 = h_tools.dc_alg(len(self.levels), len(self.g_packets))
+#         levels_1 = self.levels[levels_1]
+#         levels = [(levels_0[i], levels_1[i]) for i in range(len(self.g_packets))]
+# 
+#         for i, gp in enumerate(self.g_packets):
+#             # breakpoint()
+#             em_event = self.get_em_event(gp[0])
+#             mode = self.piece.modes[em_event['variation'], em_event['mode']]
+#             print(em_event['variation'], em_event['mode'])
+#             mode_size = np.random.choice([4, 5, 6, 7])
+#             sub_mode = get_sub_mode(mode, mode_size)
+#             cs = np.arange(2, len(sub_mode))
+#             cs_min = 2
+#             cs_max = np.round((len(sub_mode) - cs_min) + cs_min)
+#             if cs_max == cs_min: cs_max = cs_min + 1
+#             cs = np.arange(cs_min, cs_max).astype(int)
+#             ns = Note_Stream(sub_mode, self.piece.fund, None, cs)
+#             reg_mins = 75 * 2 ** np.random.uniform(0, 1.5, size=2)
+#             reg_maxs = 566 * 2 ** np.random.uniform(0, 1.5, size=2)
+#             reg_min = np.linspace(reg_mins[0], reg_mins[1], len(gp))
+#             reg_max = np.linspace(reg_maxs[0], reg_maxs[1], len(gp))
+# 
+#             this_prop = spread(decay_prop, 2)
+#             pan_gamut_size = np.random.choice(np.arange(4, 10))
+#             pan_gamut = np.random.random(size=pan_gamut_size) * 2 - 1
+#             pans = pan_gamut[h_tools.dc_alg(len(pan_gamut), len(gp))]
+#             transient_dur = spread(0.005, 6)
+#             transient_curve = spread(0, 4, 'linear')
+# 
+# 
+#             loc_id = gp[0]['loc_id']
+#             p_ct = 0
+#             for p, packet in enumerate(gp):
+#                 packet['mode'] = mode
+#                 if packet['loc_id'] != loc_id:
+#                     p_ct = 0
+#                     loc_id = packet['loc_id']
+#                 if packet['is_copy'] == True:
+#                     if packet['type'] == 'rest':
+#                         packet['freqs'] = [100]
+#                         packet['amps'] = [0.5]
+#                         packet['pan'] = 0.0
+#                         packet['cy_decays'] = [1.0]
+#                         packet['transient_dur'] = 0.005
+#                         packet['transient_curve'] = 0.0
+# 
+#                     else:
+#                         orig_event = self.events[packet['original_loc_id']]
+#                         if np.all(orig_event['packets'][p_ct]['mode'] == mode):
+#                             source = orig_event['packets'][p_ct]
+#                             packet['freqs'] = source['freqs']
+#                             packet['amps'] = source['amps']
+#                             packet['pan'] = source['pan']
+#                             packet['transient_dur'] = source['transient_dur']
+#                             packet['transient_curve'] = source['transient_curve']
+#                             packet['cy_decays'] = source['cy_decays']
+#                         else:
+#                             reg_tup = (reg_min[p], reg_max[p])
+#                             packet['freqs'] = ns.next_chord(reg_tup)
+#                             dur = packet['cy_dur']
+#                             size = np.size(packet['freqs'])
+#                             decays = np.ones(size) * dur * spread(this_prop, 2)
+#                             decays = np.array([spread(i, 2.0) for i in decays])
+#                             packet['cy_decays'] = decays
+#                             this_levels = (np.clip(spread(levels[i][k], 3), 0, 1) for k in range(2))
+#                             this_levels = tuple(this_levels)
+#                             amps = np.linspace(this_levels[0], this_levels[1], size)
+#                             amps = np.array([np.clip(spread(i, 2.0), 0, 1) for i in amps])
+# 
+#                             packet['amps'] = amps
+#                             packet['pan'] = pans[p]
+#                             packet['transient_dur'] = spread(transient_dur, 4)
+#                             packet['transient_curve'] = spread(transient_curve, 2, 'linear')
+# 
+#                 else:
+#                     if packet['type'] == 'note':
+#                         reg_tup = (reg_min[p], reg_max[p])
+#                         packet['freqs'] = ns.next_chord(reg_tup)
+#                     else:
+#                         packet['freqs'] = 100
+# 
+#                     dur = packet['cy_dur']
+#                     size = np.size(packet['freqs'])
+#                     decays = np.ones(size) * dur * spread(this_prop, 2)
+#                     decays = np.array([spread(i, 2.0) for i in decays])
+#                     packet['cy_decays'] = decays
+#                     this_levels = (np.clip(spread(levels[i][k], 3), 0, 1) for k in range(2))
+#                     this_levels = tuple(this_levels)
+#                     amps = np.linspace(this_levels[0], this_levels[1], size)
+#                     amps = np.array([np.clip(spread(i, 2.0), 0, 1) for i in amps])
+# 
+#                     packet['amps'] = amps
+#                     packet['pan'] = pans[p]
+#                     packet['transient_dur'] = spread(transient_dur, 4)
+#                     packet['transient_curve'] = spread(transient_curve, 2, 'linear')
+#                 p_ct += 1
+# 
+#     def make_packets(self):
+#         """Just the temporality. Add notes and other stats later."""
+#         # this works for irama 1. For later iramas, where repetition is wanted,
+#         # this has to happen hierarchically rather than sequentially.
+# 
+#         rest_ratio = 0.15 # proportion of klank that consists of rests
+#         # dur_range = (3, 20)
+#         dur_min = 2.5
+#         dur_octs = 3
+#         rt_durs = []
+#         remaining = self.rt_dur
+#         while sum(rt_durs) < self.rt_dur * (1 - rest_ratio):
+#             remaining = self.rt_dur * (1 - rest_ratio) - sum(rt_durs)
+#             if remaining >= dur_min and remaining < dur_min * 2 ** dur_octs:
+#                 next = remaining
+#             elif remaining < dur_min:
+#                 rt_durs[-1] += remaining
+#                 break
+#             else:
+#                 next = dur_min * 2 ** np.random.uniform(dur_octs)
+#             rt_durs.append(next)
+# 
+#         max_num_rests = len(rt_durs) + 1#inclusive
+#         min_num_rests = np.round(len(rt_durs)/3)
+#         num_rests = np.random.randint(min_num_rests, max_num_rests)
+#         cy_rests = rsm(num_rests, 60) * rest_ratio * self.cy_dur
+#         rest_locs = rng.choice(np.arange(len(rt_durs)+1), size=num_rests, replace=False)
+#         cy_time = 0
+#         self.packets = []
+#         r_ct = 0
+#         for i, rt_dur in enumerate(rt_durs):
+#             dc_durs, dc_edges = self.make_pc_edges(rt_dur)
+#             subdivs = np.random.choice([3, 4, 5, 6])
+#             nCVI_low = 20
+#             nCVI_high = 60
+#             phrase = phrase_compiler(dc_durs, dc_edges, subdivs, 24, (nCVI_low, nCVI_high))
+#             cy_phrase_durs = phrase * self.cy_dur / self.rt_dur
+#             cy_phrase_starts = cy_time + np.concatenate(([0], np.cumsum(cy_phrase_durs)[:-1]))
+#             cy_time += rt_dur * self.cy_dur / self.rt_dur
+#             if cy_time > 8: breakpoint()
+#             # phrase_durs.append(cy_phrase_durs)
+#             # phrase_starts.append(cy_phrase_starts)
+#             for j in range(len(phrase)):
+#                 packet = {}
+#                 packet['cy_start'] = cy_phrase_starts[j]
+#                 packet['cy_dur'] = cy_phrase_durs[j]
+#                 packet['type'] = 'note'
+#                 packet['phrase_num'] = i
+#                 self.packets.append(packet)
+#             if i in rest_locs:
+#                 packet = {}
+#                 packet['cy_start'] = cy_time
+#                 packet['cy_dur'] = cy_rests[r_ct]
+#                 packet['type'] = 'rest'
+#                 packet['phrase_num'] = i
+#                 self.packets.append(packet)
+#                 cy_time += cy_rests[r_ct]
+#                 r_ct += 1
+# 
+# 
+#     def add_notes(self):
+#         outer_ct = 0
+#         inner_ct = 0
+#         current_mode = None
+#         self.grouped_packets = []
+#         for packet in self.packets:
+# 
+#             event = self.get_em_event(packet)
+#             # mode = self.piece.modes[var, event['mode']]
+#             if current_mode != (event['mode'], event['variation']):
+#                 # sub_mode = get_sub_mode(mode, 5)
+#                 # packet['submode'] = sub_mode
+#                 current_mode = (event['mode'], event['variation'])
+#                 if outer_ct != 0:
+#                     self.grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
+#                     inner_ct = 0
+#             outer_ct += 1
+#             inner_ct +=1
+# 
+#         self.grouped_packets.append(self.packets[outer_ct-inner_ct:outer_ct])
+# 
+#         for i, gp in enumerate(self.grouped_packets):
+#             event = self.get_em_event(gp[0])
+#             mode = self.piece.modes[event['variation'], event['mode']]
+#             mode_size = np.random.choice([4, 5, 6, 7])
+#             sub_mode = get_sub_mode(mode, mode_size)
+#             cs = np.arange(2, len(sub_mode))
+#             cs_min = 2
+#             cs_max = np.round((len(sub_mode) - cs_min) + cs_min)
+#             if cs_max == cs_min: cs_max = cs_min + 1
+#             cs = np.arange(cs_min, cs_max).astype(int)
+#             gamut_size = np.random.choice(np.arange(6, 18))
+#             ns = Note_Stream(sub_mode, self.piece.fund, chord_sizes=cs)
+#             register = (100, 500) # just for now
+#             reg_mins = 75 * 2 ** np.random.uniform(0, 1.5, size=2)
+#             reg_maxs = 566 * 2 ** np.random.uniform(0, 1.5, size=2)
+#             reg_min = np.linspace(reg_mins[0], reg_mins[1], len(gp))
+#             reg_max = np.linspace(reg_maxs[0], reg_maxs[1], len(gp))
+#             for p, packet in enumerate(gp):
+#                 if packet['type'] == 'note':
+#                     packet['freqs'] = ns.next_chord((reg_min[p], reg_max[p]))
+#                 else:
+#                     packet['freqs'] = [100]
+# 
+#         # now assign the sub mode to each
+# 
+# 
+#     def add_spec(self, prop=5, amp=0.5):
+#         """adds decay times and amp levels for Klank supercollider Ugen. """
+#         #for a start, just have random delays, less than total dur.
+#         levels_0 = h_tools.dc_alg(len(self.levels), len(self.grouped_packets))
+#         levels_0 = self.levels[levels_0]
+#         levels_1 = h_tools.dc_alg(len(self.levels), len(self.grouped_packets))
+#         levels_1 = self.levels[levels_1]
+#         levels = [(levels_0[i], levels_1[i]) for i in range(len(self.grouped_packets))]
+# 
+#         pan_pos = h_tools.dc_alg(len(self.pan_pos), len(self.grouped_packets))
+#         pan_pos = self.pan_pos[pan_pos]
+# 
+#         for i, gp in enumerate(self.grouped_packets):
+#             this_prop = spread(prop, 2)
+#             pan_gamut_size = np.random.choice(np.arange(4, 10))
+#             pan_gamut = np.random.random(size=pan_gamut_size) * 2 - 1
+#             pans = pan_gamut[h_tools.dc_alg(len(pan_gamut), len(gp))]
+#             transient_dur = spread(0.005, 6)
+#             transient_curve = spread(0, 4, 'linear')
+#             for p, packet in enumerate(gp):
+#                 dur = packet['cy_dur']
+#                 decays = np.ones(np.size(packet['freqs'])) * dur * spread(this_prop, 2)
+#                 decays = np.array([spread(i, 2.0) for i in decays])
+#                 packet['cy_decays'] = decays
+# 
+#                 this_levels = (np.clip(spread(levels[i][0], 3), 0, 1), np.clip(spread(levels[i][1], 3), 0, 1))
+#                 amps = np.linspace(this_levels[0], this_levels[1], np.size(packet['freqs']))
+#                 amps = np.array([np.clip(spread(i, 2.0), 0, 1) for i in amps])
+# 
+#                 packet['amps'] = amps
+#                 packet['pan'] = pans[p]
+#                 packet['transient_dur'] = spread(transient_dur, 4)
+#                 packet['transient_curve'] = spread(transient_curve, 2, 'linear')
+# 
+# 
+#     def get_em_event(self, packet):
+#         """Started calling it `em_event` instead of just `event` to signify
+#         that they are different things."""
+#         start = packet['cy_start']
+#         cycle = (start // 1).astype(int)
+#         event_map = self.piece.cycles[cycle].event_map
+#         em_starts = np.array(list(event_map.keys()))
+#         event_idx = np.nonzero(start%1 >= em_starts)[0][-1]
+#         key = list(event_map.keys())[event_idx]
+#         event = event_map[key]
+#         return event
+# 
+#     def add_real_times(self):
+#         time = self.piece.time
+#         for packet in self.packets:
+#             cy_start = packet['cy_start']
+#             cy_end = cy_start + packet['cy_dur']
+#             rt_start = time.real_time_from_cycles(cy_start)
+#             rt_end = time.real_time_from_cycles(cy_end)
+#             rt_dur = rt_end - rt_start
+#             packet['rt_start'] = rt_start
+#             packet['rt_dur'] = rt_dur
+#             cy_dec_ends = packet['cy_decays'] + cy_start
+#             rt_dec_ends = [time.real_time_from_cycles(i) for i in cy_dec_ends]
+#             rt_dec_ends = np.array(rt_dec_ends)
+#             rt_dec_durs = rt_dec_ends - rt_start
+#             packet['rt_decays'] = rt_dec_durs
+#             if packet['type'] == 'rest':
+#                 packet['rt_dur'] = "Rest(" + str(packet['rt_dur']) + ")"
+# 
+# 
+# 
+#     def make_pc_edges(self, rt_dur, irama=0):
+#         # for irama 1, shape supplied to phrase compiler should be either
+#         # down-up-down, down-up-middle, middle-up-down
+#         if irama == 0:
+#             midpoint = np.random.uniform(0.25, 0.75)
+#             dc_durs = np.array([midpoint, 1-midpoint]) * rt_dur
+#             down = np.random.uniform(1.5, 3) / 3
+#             middle = np.random.uniform(3, 4.5) / 3
+#             up = np.random.uniform(4.5, 6) / 3
+#             profiles = [[down, up, down], [down, up, middle], [middle, up, down]]
+#             dc_edges = profiles[np.random.choice(np.arange(3))]
+#             return dc_durs, dc_edges
+# 
+#     def make_generalized_pc_edges(self, rt_dur, irama=0):
+#         min_seg_dur = 2
+#         max_seg_dur = 6
+#         seg_dur_octs = np.log2(max_seg_dur / min_seg_dur)
+#         avg_seg_dur = min_seg_dur * (2 ** np.random.uniform(seg_dur_octs))
+#         num_segs = np.round(rt_dur / avg_seg_dur).astype(int)
+#         if num_segs == 0: num_segs = 1
+#         dc_durs = rsm(num_segs, 15) * rt_dur
+# 
+#         min_td = 0.25
+#         max_td = 6
+#         td_octs = np.log2(max_td / min_td)
+#         dc_edges = [min_td * 2 ** np.random.uniform(td_octs) for i in range(num_segs + 1)]
+#         # should I sculpt these such that the mins end up at the beginning and
+#         # end, so that phrases ease in and out?
+#         # Or, should I accept what the fates ordain, and go about my merry way?
+#         # for now, stick with the fates.
+# 
+#         return dc_durs, dc_edges
+# 
+#     def save_as_json(self, path):
+#         json.dump(self.packets, open(path, 'w'), cls=h_tools.NpEncoder)
 
 
 class MovingPluck:
@@ -988,17 +992,30 @@ class MovingPluck:
 
 
     def make_phrases(self):
-        init_td = 1
+        init_td = 0.5
         init_nCVI = 8
         self.phrases = []
         for il in range(self.irama_levels):
-            freq_min = 100 * (Golden ** il)
+            freq_min = 100 
+            freq_min_mult_gamut = 2 ** np.linspace(0, il * 2/3, 10)
+            freq_min_mult = h_tools.dc_alg(10, len(self.il_phrase_timings[il]), alpha=2)
+            freq_min_mult = freq_min_mult_gamut[freq_min_mult]
+            freq_min = freq_min * freq_min_mult
+            
+            
             attack_ratio = 0.1 + (0.2 * il)
-            avg_td = init_td * (Golden ** il)
+            avg_td = init_td * (Golden ** (il/3))
             avg_nCVI = init_nCVI * (2 ** il)
             phrase_timings = self.il_phrase_timings[il]
-            for pt in phrase_timings:
-                p_td = spread(avg_td, 1.5)
+            
+            td_mult_gamut = 2 ** np.linspace(-1 * Golden ** (il/2), Golden ** (il/2), 10)
+            td_mult = h_tools.dc_alg(10, len(self.il_phrase_timings[il]), alpha=2)
+            td_mult = td_mult_gamut[td_mult] * avg_td
+            
+            
+            # breakpoint()
+            for idx, pt in enumerate(phrase_timings):
+                p_td = td_mult[idx]
                 p_nCVI = spread(avg_nCVI, 1.5)
                 size = np.round(pt['rt_dur'] * p_td).astype(int)
                 if size == 0: size = 1
@@ -1018,12 +1035,12 @@ class MovingPluck:
                 if len(np.shape(midpoints)) == 0: midpoints = [midpoints]
                 if len(modes) == 1:
                     pp = make_pluck_phrase(modes[0], self.piece.fund, size,
-                        dur_tot, p_nCVI, (freq_min, 2*freq_min),
+                        dur_tot, p_nCVI, (freq_min[idx], 2*freq_min[idx] * (Golden ** (il/2))),
                         p_transition=tts[0], attack_ratio=attack_ratio)
                 else:
                     pp = make_multi_changing_pluck_phrase(modes, self.piece.fund,
                         size, dur_tot, p_nCVI, tts, midpoints,
-                        (freq_min, 2*freq_min), attack_ratio=attack_ratio)
+                        (freq_min[idx], 2*freq_min[idx] * (Golden ** (il/2))), attack_ratio=attack_ratio)
                     # next thing to do is convert this timing stuff,
                 # which is in cycles, to real time. will require including the
                 # cy start time in tphhe function itself? or going through some

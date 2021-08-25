@@ -178,9 +178,11 @@ class Time:
                     ct_start = self.cycle_starts[i] + (self.cycle_durs[i] * starts[k])
                     self.event_map[j][ct_start] = {'mode': i, 'variation': seq[k]}
         self.real_time_event_map = {}
+        self.ct_event_map = {}
         for cycle in self.event_map.keys():
             for event in self.event_map[cycle].keys():
                 real_time = self.real_time_from_cycles(cycle+event)
+                self.ct_event_map[cycle+event] = self.event_map[cycle][event]
                 self.real_time_event_map[real_time] = self.event_map[cycle][event]
 
     def real_time_dur_from_cycle_event(self, cycle_num, event_num):

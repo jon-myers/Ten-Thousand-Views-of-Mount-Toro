@@ -3,11 +3,12 @@ from rhythm_tools import Time
 from rhythm_tools import rhythmic_sequence_maker as rsm
 from mode_generation import make_mode_sequence, make_melody
 import numpy as np
-from instruments import Pluck, Klank, MovingPluck
+from instruments import Pluck, MovingPluck
 import json
 from harmony_tools import utils as h_tools
 import pickle
 from popcorn import Timespan
+from klank import Klank_alt 
 
 class Piece:
 
@@ -37,11 +38,13 @@ class Piece:
             for instance in cycle.instances:
                 instance.make_plucks()
         self.assess_chord_substitutions()
-        # self.compile_plucks()
-        # self.format_plucks_JSON()
+        self.compile_plucks()
+        self.format_plucks_JSON()
 
-
-        self.make_klanks()
+        self.klanks = Klank_alt(self)
+        
+        
+        # self.make_klanks()
         # self.save_melody_JSON()
         self.make_moving_plucks()
         self.make_sympathetics()
@@ -118,6 +121,29 @@ class Piece:
         nCVI_bws = rsm(self.nos, 30) * self.nos * 30
         attack_avgs = rsm(self.nos, 40) * self.nos * 0.01
         attack_avg_max_bws = rsm(self.nos, 40) * self.nos * 1.5
+        
+        pan_ctr_gamut = np.linspace(-0.8, 0.8, 5)
+        pan_ctr_starts = h_tools.dc_alg(5, self.nos, alpha=2)
+        pan_ctr_starts = pan_ctr_gamut[pan_ctr_starts]
+        pan_ctr_ends = h_tools.dc_alg(5, self.nos, alpha=2)
+        pan_ctr_ends = pan_ctr_gamut[pan_ctr_ends]
+        
+        pan_bw_gamut = np.linspace(0, 0.3, 5)
+        pan_bws = h_tools.dc_alg(5, self.nos, alpha=2)
+        pan_bws = pan_bw_gamut[pan_bws]
+        
+        rest_prop_gamut = np.linspace(0, 0.25, 5)
+        rest_props = h_tools.dc_alg(5, self.nos, alpha=2)
+        rest_props = rest_prop_gamut[rest_props]
+        
+        rest_spread_gamut = np.linspace(0, 1, 5)
+        rest_spreads = h_tools.dc_alg(5, self.nos, alpha=2)
+        rest_spreads = rest_spread_gamut[rest_spreads]
+        
+        rest_nCVI_gamut = np.linspace(20, 60, 5)
+        rest_nCVIs = h_tools.dc_alg(5, self.nos, alpha=2)
+        rest_nCVIs = rest_nCVI_gamut[rest_nCVIs]
+        
 
         self.timespans = []
         # breakpoint()
@@ -137,7 +163,9 @@ class Piece:
                         cy_durs[s], cy_densities[i][s], vol_offsets[s], onset_nCVIs[s],
                         all_vol_dist_vals[s], ctr_freqs_log2[s] + i, ctr_freq_bws[s],
                         max_freq_oct_bws[s], nCVI_amps[s], nCVI_durs[s], nCVI_bws[s],
-                        attack_avgs[s], attack_avg_max_bws[s], i, cy_start_time)
+                        attack_avgs[s], attack_avg_max_bws[s], i, cy_start_time,
+                        pan_ctr_starts[s], pan_ctr_ends[s], pan_bws[s] * 2 ** (i/3),
+                        rest_props[s] * 2 ** (i/3), rest_spreads[s], rest_nCVIs[s])
                     ts.build()
                     sec_timespans.append(ts)
                 cy_timespans.append(sec_timespans)
@@ -275,16 +303,16 @@ class Piece:
     def make_klanks(self):
         self.klank_packets = []
         # start with just the first one, for irama 0
+        fine_tuning = np.random.random(size=3)
         for i in range(4):
-            klank = Klank(self, i)
+            klank = Klank(self, i, fine_tuning)
             self.klank_packets += klank.packets
         file = open('json/klank_packets.JSON', 'w')
         json.dump(self.klank_packets, file, cls=h_tools.NpEncoder)
 
     def make_moving_plucks(self):
         self.mp_packets = []
-        for i in range(1):
-            mp = MovingPluck(self)
+        self.mp = MovingPluck(self)
             # self.mp_packets += mp.packets
 
 

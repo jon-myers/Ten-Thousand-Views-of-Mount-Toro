@@ -42,9 +42,10 @@ SynthDef.new(\melody, {|out=0, freq=200.0, dur=5|
 );
 
 
+~klanks[18]["type"]
+~klanks.do({|i| if (~klanks[i]["type"] == "rest", {~klanks[i].postln})
 
-
-
+~klanks[0].keys()
 
 
 """And as the world unrolled itself for him, so rolleth it together again for him in rings, as the growth of good through evil, as the growth of purpose out of chance."""
@@ -72,7 +73,8 @@ SynthDef.new(\melody, {|out=0, freq=200.0, dur=5|
 }
 );
 
-Synth(\klank_3, [\freqs, [200, 300, 500], \decays, [0.8, 1.5, 0.9]]);
+Synth(\klank_3, [\freqs, [200, 300, 500], \decays, [5, 4, 6], \transient_curve, 0, \off_dur,20]);
+
 
 
 (
