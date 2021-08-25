@@ -316,7 +316,7 @@ def make_changing_pluck_phrase(mode_a, mode_b, fund, size, dur_tot, nCVI,
 
 def make_symps_from_mode(mode, fund):
     min_freq = 200
-    max_freq = 800
+    max_freq = min_freq * 2 ** 3
     freqs = mode * fund;
     symp_freqs = np.array([])
     for f in freqs:

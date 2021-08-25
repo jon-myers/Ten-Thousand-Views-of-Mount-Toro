@@ -481,7 +481,7 @@ class Instance:
 
 def build(save_piece_pickle=False, use_pickles=False, save_pickles=False):
     noc = 8
-    dur_tot = 29*60
+    dur_tot = 39*60
     fund = 150
     if use_pickles:
         t = pickle.load(open('pickles/t.p', 'rb'))

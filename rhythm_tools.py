@@ -444,8 +444,14 @@ def normalize(array):
     array = np.array(array)
     return array / sum(array)
 
-def jiggle_sequence(sequence, spd):
-    return normalize(np.array([spread(i, spd) for i in sequence]))
+def jiggle_sequence(sequence, spd, keep_dur_tot=False):
+    out = normalize(np.array([spread(i, spd) for i in sequence]))
+    if keep_dur_tot:
+        dur_tot = np.sum(sequence)
+        return out * dur_tot
+    else:
+        return out
+        
 
 def start_cumsum(dur_array):
     """Returns the iterative cumsum of the duration array, effectively giving

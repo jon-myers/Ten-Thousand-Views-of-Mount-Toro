@@ -1,7 +1,7 @@
 
 
 
-
+(
 // popcorn
 (
 SynthDef.new(\singlePop, {|out=0, attack=0.01, decay=1.0, curve = -4, lpFilterFreq=1600, hpFilterFreq=50, amp=0.5, pan=0.0|
@@ -95,7 +95,7 @@ SynthDef.new(\singlePop, {|out=0, attack=0.01, decay=1.0, curve = -4, lpFilterFr
 
 (
 SynthDef.new(\moving_pluck, {|out=0, releaseDur|
-	var spec, freqEnv, sig, transientEnv, allFreqs, pluckEnv, ampEnv, doneEnv, symps, sympFreqs;
+	var spec, freqEnv, sig, transientEnv, allFreqs, pluckEnv, ampEnv, doneEnv, symps, sympFreqs, sympPans;
 	freqEnv = Env.newClear(200);
 	pluckEnv = Env.newClear(200);
 	ampEnv = Env.newClear(200);
@@ -103,20 +103,26 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 	freqEnv = NamedControl.kr(\freqEnv, freqEnv.asArray);
 	pluckEnv = NamedControl.kr(\pluckEnv, pluckEnv.asArray);
 	ampEnv = NamedControl.kr(\ampEnv, ampEnv.asArray);
-	sympFreqs = NamedControl.kr(\sympFreqs, 200.0!14);
+	sympFreqs = NamedControl.kr(\sympFreqs, 200.0!21);
+	sympPans = Array.fill(21, {2.0.rand-1});
 	freqEnv = 2 ** EnvGen.kr(freqEnv);
 	transientEnv = EnvGen.kr(Env.new([0, 1, 1], [0.2, 10]), EnvGen.kr(pluckEnv));
 	sig = 0.5 * Pluck.ar(EnvGen.kr(ampEnv) * PinkNoise.ar(), EnvGen.kr(pluckEnv), 40.0.reciprocal, freqEnv.reciprocal, 5, 0.38, 1.0);
 	sig = BHiPass.ar(sig, 400);
 	sig = BLowPass.ar(sig, 3000);
-	symps = Mix.ar(Array.fill(14, {|i| AllpassL.ar(sig, sympFreqs[i].reciprocal, sympFreqs[i].reciprocal, 10)}));
+	symps = Mix.ar(Array.fill(21, {|i|
+		var symp;
+		symp = AllpassL.ar(sig, sympFreqs[i].reciprocal, sympFreqs[i].reciprocal, 10, 0.4);
+		symp = Pan2.ar(symp, sympPans[i]);
+	}));
+	sig = Pan2.ar(sig);
 	sig = Mix.ar([sig, symps]);
-	sig = Pan2.ar(0.5 * sig);
+
 	Out.ar(out, sig);
 }).add;
 );
 
-
+1.0.rand
 // klank
 
 
@@ -142,10 +148,6 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 );
 
 
-Synth(\singlePop, [\attack, ~pc_attacks[~start], \decay, ~pc_decays[~start], \curve, -4, \lpFilterFreq, 22000, \hpFilterFreq, ~pc_hpfs[~start..], \amp, ~pc_amps[~start]])
-
-~pc_attacks.size
-
 
 //get all jsons
 (
@@ -156,17 +158,21 @@ Synth(\singlePop, [\attack, ~pc_attacks[~start], \decay, ~pc_decays[~start], \cu
 
 ~kernals = File.open(~jsonPath ++ "kernals.JSON", "r");
 ~kernals = ~kernals.readAllString.parseYAML;
-
 ~pc_attacks = Array.fill(~kernals.size, {|i| ~kernals[i]["attack"].asFloat});
 ~pc_hpfs = Array.fill(~kernals.size, {|i| ~kernals[i]["hp_freq"].asFloat});
 ~pc_lpfs = Array.fill(~kernals.size, {|i| ~kernals[i]["lp_freq"].asFloat});
-~pc_decays = Array.fill(~kernals.size, {|i| ~kernals[i]["rt_dur"].asFloat - ~pc_attacks[i]});
+~pc_decays = Array.fill(~kernals.size, {|i| i.postln; ~kernals[i]["rt_dur"].asFloat - ~pc_attacks[i]});
 ~pc_durs = Array.fill(~kernals.size-1, {|i| ~kernals[i+1]["rt_onset_time"].asFloat - ~kernals[i]["rt_onset_time"].asFloat});
 ~pc_durs.add(~pc_durs[~pc_durs.size-1]);
+~pc_durs = Array.fill(~pc_durs.size, {|i|
+	if (~kernals[i]["type"] == "rest",
+		{("Rest(" ++ ~pc_durs[i].asString ++ ")").interpret},
+		{~pc_durs[i]})
+});
 ~pc_amps = Array.fill(~kernals.size, {|i| ~kernals[i]["amp"].asFloat});
 ~pc_pans = Array.fill(~kernals.size, {|i| ~kernals[i]["pan"].asFloat});
 );
-
+// ~kernals[i]["dur"]
 
 (// moving pluck
 ~dir = PathName.new(Document.current.dir);
@@ -230,11 +236,12 @@ Synth(\singlePop, [\attack, ~pc_attacks[~start], \decay, ~pc_decays[~start], \cu
 ~k_transient_curve = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_curve"].asFloat});
 );
 )
+)
 ~k_decays[1]
-Array.fill(~k_decays.size, {|i| ~k_decays[i][0].maxItem})
+Array.fill(~k_decays.size, {|i| ~k_decays[i][0].maxItem}).sort({|a, b| a > b})
 ~k_decays.size.do({|i| i.postln; ~k_decays[i][0].maxItem})
-~k_decays[4][0].maxItem
-
+~k_decays[12][0].maxItem
+~k_decays[14]
 
 (
 ~start = 0;
@@ -258,7 +265,7 @@ q = Pbind(
 	\size, Pkey(\freqs).collect({|x| x[0].size.asSymbol}),
 	\instrument, Pkey(\size).collect({|x| \klank_ ++ x}),
 	\dur, Pseq(~k_durs, 1),
-	\off_dur, Pseq(8*(~k_next_durs + ~k_durs), 1),
+	\off_dur, Pseq(16*(~k_next_durs + ~k_durs), 1),
 	\pan,Pseq(~k_pan, 1),
 	\amps, Pseq(~k_amps, 1),
 	\transient_dur, Prand([0.005], inf),
@@ -278,3 +285,28 @@ r = Pbind(
 ).play
 );
 )
+
+a = Pfunc({ exprand(0.1, 2.0) + #[1, 2, 3, 6].choose }, { \reset.postln });
+a.asStream
+a.next
+
+z = Pfunc({Array.fill(21, {2.0.rand - 1})})
+z.asStream
+.nextN(20).postln
+
+Prand
+~allFreqEnvs.size
+~idx = 20
+~allFreqEnvs[~idx][0]
+~allPluckEnvs[~idx][0]
+~allAmpEnvs[~idx][0]
+~sympFreqs[~idx][0]
+~allReleaseDurs[~idx]
+~sympPans = Array.fill(21, {|i| 2.0.rand - 1});
+x = Synth(\moving_pluck, [
+	\freqEnv, ~allFreqEnvs[~idx][0],
+	\PluckEnv, ~allPluckEnvs[~idx][0],
+	\ampEnv, ~allAmpEnvs[~idx][0],
+	\releaseDur, ~allReleaseDurs[~idx],
+	\sympFreqs, ~sympFreqs[~idx][0]
+])

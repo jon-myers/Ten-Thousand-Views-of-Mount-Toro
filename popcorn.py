@@ -56,7 +56,7 @@ class Timespan:
     # @profile
     def build(self):
         # irama transformations
-        self.avg_center_freq += self.irama
+        self.avg_center_freq += (1.5 * self.irama)
         self.cy_kernal_density *= 2 ** self.irama
 
         self.vol_dist_vals = np.array(self.vol_dist_vals)
@@ -120,8 +120,8 @@ class Timespan:
         freq_ctrs = self.avg_center_freq + freq_ctr_mults
         # breakpoint()
 
-        highs = np.clip(2 ** (freq_ctrs + bws), 0, 22000)
-        lows = 2 ** (freq_ctrs - bws)
+        highs = np.clip(2 ** (freq_ctrs + bws), 20, 22000)
+        lows = np.clip(2 ** (freq_ctrs - bws), 20, 22000)
 
         kernals = []
         r = 0

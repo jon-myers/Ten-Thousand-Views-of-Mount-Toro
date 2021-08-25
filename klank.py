@@ -188,7 +188,7 @@ class Klank_alt:
                         phrase['cy_note_starts'] = cy_note_starts
                     else:
                         target_phrase = phrases[phrase['copy']]
-                        cy_note_durs = target_phrase['cy_note_durs']
+                        cy_note_durs = jiggle_sequence(target_phrase['cy_note_durs'], 1.2, True)
                         phrase['cy_note_durs'] = cy_note_durs
                         cy_note_starts = np.concatenate([[0], np.cumsum(cy_note_durs)[:-1]]) + phrase['cy_start']
                         phrase['cy_note_starts'] = cy_note_starts
