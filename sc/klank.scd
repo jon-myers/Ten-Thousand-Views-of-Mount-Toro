@@ -3,7 +3,7 @@
 ~jsonPath = ~dir.fullPath[..~dir.fullPath.size-3] ++ 'JSON/';
 
 
-~klanks = File.open(~jsonPath ++ "klank_packets.JSON", "r");
+~klanks = File.open(~jsonPath ++ "klank_packets_alt.JSON", "r");
 ~klanks = ~klanks.readAllString.parseYAML;
 ~k_freqs = Array.fill(~klanks.size, {|i| [~klanks[i]["freqs"].asFloat]});
 ~k_amps = Array.fill(~klanks.size, {|i| [~klanks[i]["amps"].asFloat]});
@@ -24,6 +24,7 @@
 ~k_transient_curve = Array.fill(~klanks.size, {|i| ~klanks[i]["transient_curve"].asFloat});
 );
 
+
 ~melody = File.open(~jsonPath ++ "melody.JSON", "r");
 ~melody = ~melody.readAllString.parseYAML;
 ~m_freqs = Ar ray.fill(~melody.size, {|i| ~melody[i]["note"].asFloat})
@@ -41,11 +42,13 @@ SynthDef.new(\melody, {|out=0, freq=200.0, dur=5|
 }).add;
 );
 
-
+~klanks[0]["decays"]
 ~klanks[18]["type"]
-~klanks.do({|i| if (~klanks[i]["type"] == "rest", {~klanks[i].postln})
+~klanks.size.do({|i| if (~klanks[i]["type"] == "rest", {i.postln})})
 
-~klanks[0].keys()
+~klanks[3438].keys()
+~klanks[3438]["rt_dur"]
+~k_amps
 
 
 """And as the world unrolled itself for him, so rolleth it together again for him in rings, as the growth of good through evil, as the growth of purpose out of chance."""
@@ -87,8 +90,8 @@ p = Pbind(
 	\off_dur, Pseq(8*(~k_next_durs + ~k_durs), 1),
 	\pan,Pseq(~k_pan, 1),
 	\amps, Pseq(~k_amps, 1),
-	\transient_dur, Prand([0.005], inf),
-	\transient_curve, Prand([-4, -3, -2, -1, 0, 1, 2, 3, 4], inf)
+	\transient_dur, Pseq(~k_transient_durs, 1),
+	\transient_curve, Pseq(~k_transient_curve, 1)
 ).play
 );
 

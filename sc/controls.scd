@@ -122,7 +122,7 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 }).add;
 );
 
-1.0.rand
+
 // klank
 
 
@@ -237,11 +237,6 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 );
 )
 )
-~k_decays[1]
-Array.fill(~k_decays.size, {|i| ~k_decays[i][0].maxItem}).sort({|a, b| a > b})
-~k_decays.size.do({|i| i.postln; ~k_decays[i][0].maxItem})
-~k_decays[12][0].maxItem
-~k_decays[14]
 
 (
 ~start = 0;
@@ -285,28 +280,3 @@ r = Pbind(
 ).play
 );
 )
-
-a = Pfunc({ exprand(0.1, 2.0) + #[1, 2, 3, 6].choose }, { \reset.postln });
-a.asStream
-a.next
-
-z = Pfunc({Array.fill(21, {2.0.rand - 1})})
-z.asStream
-.nextN(20).postln
-
-Prand
-~allFreqEnvs.size
-~idx = 20
-~allFreqEnvs[~idx][0]
-~allPluckEnvs[~idx][0]
-~allAmpEnvs[~idx][0]
-~sympFreqs[~idx][0]
-~allReleaseDurs[~idx]
-~sympPans = Array.fill(21, {|i| 2.0.rand - 1});
-x = Synth(\moving_pluck, [
-	\freqEnv, ~allFreqEnvs[~idx][0],
-	\PluckEnv, ~allPluckEnvs[~idx][0],
-	\ampEnv, ~allAmpEnvs[~idx][0],
-	\releaseDur, ~allReleaseDurs[~idx],
-	\sympFreqs, ~sympFreqs[~idx][0]
-])

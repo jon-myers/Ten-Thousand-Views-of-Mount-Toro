@@ -101,7 +101,7 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 
 (~dir = PathName.new(Document.current.dir);
 ~jsonPath = ~dir.fullPath[..~dir.fullPath.size-3] ++ 'JSON/';
-);
+
 
 (
 ~phrases = File.open(~jsonPath ++ "moving_pluck_phrases.JSON", "r");
@@ -131,17 +131,18 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 ~allAmpEnvs = Array.fill(~phrases.size, {|i| [~ampEnv.value(~allPluckAmps[i], ~allPluckStarts[i])]});
 ~allReleaseDurs = Array.fill(~phrases.size, {|i| ~phrases[i]["rt_releaseDur"].asFloat});
 ~sympFreqs = Array.fill(~phrases.size, {|i| [~phrases[i]["symps"].asFloat]});
-);
+)
+)
 
 ~start = 25;
 (
 r = Pbind(
 	\instrument, \moving_pluck,
-	\freqEnv, Pseq(~allFreqEnvs[~start..], 1),
-	\pluckEnv, Pseq(~allPluckEnvs[~start..], 1),
-	\ampEnv, Pseq(~allAmpEnvs[~start..], 1),
-	\releaseDur, Pseq(~allReleaseDurs[~start..], 1),
-	\dur, Pseq(~dursBetweenOnsets[~start..], 1),
-	\sympFreqs, Pseq(~sympFreqs[~start..], 1),
+	\freqEnv, Pseq(~allFreqEnvs[~start], 1),
+	\pluckEnv, Pseq(~allPluckEnvs[~start], 1),
+	\ampEnv, Pseq(~allAmpEnvs[~start], 1),
+	\releaseDur, Pseq(~allReleaseDurs[~start], 1),
+	\dur, Pseq(~dursBetweenOnsets[~start], 1),
+	\sympFreqs, Pseq(~sympFreqs[~start], 1),
 ).play
 );

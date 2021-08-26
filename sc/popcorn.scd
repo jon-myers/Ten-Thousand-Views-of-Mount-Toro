@@ -14,7 +14,7 @@
 ~pc_durs.add(~pc_durs[~pc_durs.size-1])
 )
 
-~kernals.size
+~kernals[0].keys()
 ~lpfs[0]
 ~hpfs[0]
 

@@ -92,7 +92,7 @@ class Klank_alt:
             num_of_rep_phrases = np.round(num_of_phrases * self.repeat_chance[i]).astype(int)
             num_of_orig_phrases = num_of_phrases - num_of_rep_phrases
             orig_seq = rsm(num_of_orig_phrases, self.phrase_dur_nCVIs[i])
-            max_reps = [2, 3, 4, 5]
+            max_reps = [2, 4, 8, 16]
             rep_sizes = split_into_groups(num_of_phrases, num_of_orig_phrases, max_reps[i])
             copy_status = []
             phrase_durs = np.array([])
