@@ -1,6 +1,3 @@
-
-
-
 (
 // popcorn
 (
@@ -94,7 +91,7 @@ SynthDef.new(\singlePop, {|out=0, attack=0.01, decay=1.0, curve = -4, lpFilterFr
 );
 
 (
-SynthDef.new(\moving_pluck, {|out=0, releaseDur|
+SynthDef.new(\moving_pluck, {|out=0, releaseDur, coef|
 	var spec, freqEnv, sig, transientEnv, allFreqs, pluckEnv, ampEnv, doneEnv, symps, sympFreqs, sympPans;
 	freqEnv = Env.newClear(200);
 	pluckEnv = Env.newClear(200);
@@ -107,7 +104,7 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 	sympPans = Array.fill(21, {2.0.rand-1});
 	freqEnv = 2 ** EnvGen.kr(freqEnv);
 	transientEnv = EnvGen.kr(Env.new([0, 1, 1], [0.2, 10]), EnvGen.kr(pluckEnv));
-	sig = 0.5 * Pluck.ar(EnvGen.kr(ampEnv) * PinkNoise.ar(), EnvGen.kr(pluckEnv), 40.0.reciprocal, freqEnv.reciprocal, 5, 0.38, 1.0);
+	sig = 0.5 * Pluck.ar(EnvGen.kr(ampEnv) * PinkNoise.ar(), EnvGen.kr(pluckEnv), 40.0.reciprocal, freqEnv.reciprocal, 5, coef, 1.0);
 	sig = BHiPass.ar(sig, 400);
 	sig = BLowPass.ar(sig, 3000);
 	symps = Mix.ar(Array.fill(21, {|i|
@@ -179,6 +176,7 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 ~jsonPath = ~dir.fullPath[..~dir.fullPath.size-3] ++ 'JSON/';
 
 
+
 (
 ~phrases = File.open(~jsonPath ++ "moving_pluck_phrases.JSON", "r");
 ~phrases = ~phrases.readAllString.parseYAML;
@@ -207,6 +205,7 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur|
 ~allAmpEnvs = Array.fill(~phrases.size, {|i| [~ampEnv.value(~allPluckAmps[i], ~allPluckStarts[i])]});
 ~allReleaseDurs = Array.fill(~phrases.size, {|i| ~phrases[i]["rt_releaseDur"].asFloat});
 ~sympFreqs = Array.fill(~phrases.size, {|i| [~phrases[i]["symps"].asFloat]});
+~coefs = Array.fill(~phrases.size, {|i| ~phrases[i]["coef"].asFloat});
 )
 );
 
@@ -277,6 +276,12 @@ r = Pbind(
 	\releaseDur, Pseq(~allReleaseDurs, 1),
 	\dur, Pseq(~dursBetweenOnsets, 1),
 	\sympFreqs, Pseq(~sympFreqs, 1),
+	\coef, Pseq(~coefs, 1)
 ).play
 );
 )
+// ~coefs
+
+~dursBetweenOnsets[203]
+
+]

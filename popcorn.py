@@ -60,6 +60,7 @@ class Timespan:
         self.cy_kernal_density *= 2 ** self.irama
 
         self.vol_dist_vals = np.array(self.vol_dist_vals)
+        
 
         
         cy_rest_dur_tot = self.rest_prop * self.cy_dur_tot
@@ -80,17 +81,13 @@ class Timespan:
         rest_durs = rsm(num_of_rests, self.rest_nCVI, start_times=False) * cy_rest_dur_tot
         rest_locs = rng.choice(np.arange(self.num_of_kernals+1), size=num_of_rests, replace=False)
         
-        
-        
-        # max_amp = 1
-        # max_dur = 8
-        # max_vol_tot = self.dur_tot * self.max_freq_bw
-        # # have to figure out standard vals for these thigns, dur should be somehow
-        # # assigned externally; otherwise, not sure how to
-
-        # vol_dist_vals = rsm(3, self.volume_distribution_nCVI)
-        # vol_dist_vals /= np.prod(vol_dist_vals) ** (1/3)
-        # breakpoint()
+        # this ensures that the beginnings don't align
+        if not np.isin(0, rest_locs):
+            rest_locs = 0
+            insert_dur = active_durs[-1] * np.random.random() 
+            rest_durs = np.concatenate(([insert_dur], rest_durs))
+            num_of_rests += 1
+            active_durs[-1] = active_durs[-1] - insert_dur
         
         pan_ctr = np.linspace(self.pan_ctr_start, self.pan_ctr_end, self.num_of_kernals)
         pan_offset = np.random.uniform(-1, 1, self.num_of_kernals) * self.pan_bw

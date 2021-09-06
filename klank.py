@@ -230,14 +230,14 @@ class Klank_alt:
         levels_1 = self.levels[levels_1]
         levels = [(levels_0[i], levels_1[i]) for i in range(len(self.phrase_groups))]
         
-        pan_gamut = np.linspace(-1, 1, 10)
+        pan_gamut = np.linspace(-0.8, 0.8, 10)
         pan_centers = h_tools.dc_alg(10, len(self.phrase_groups), alpha=2)
         pan_centers = pan_gamut[pan_centers]
         pan_bw_gamut = np.linspace(0, 0.5, 10)
         pan_bws = h_tools.dc_alg(10, len(self.phrase_groups), alpha=2)
         pan_bws = pan_bw_gamut[pan_bws] 
         
-        transient_dur_gamut = 0.01 * (2 ** np.linspace(0, 3, 10))
+        transient_dur_gamut = 0.007 * (2 ** np.linspace(0, 3, 10))
         transient_durs = h_tools.dc_alg(10, len(self.phrase_groups), alpha=2)
         transient_durs = transient_dur_gamut[transient_durs]
         transient_dur_bw_gamut = np.linspace(0, 3, 10)

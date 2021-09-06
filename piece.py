@@ -49,7 +49,7 @@ class Piece:
         self.make_moving_plucks()
         self.make_sympathetics()
         self.make_popcorn()
-        breakpoint()
+        # breakpoint()
 
     def make_sympathetics(self):
         regions = self.consolidated_em
@@ -132,7 +132,7 @@ class Piece:
         pan_bws = h_tools.dc_alg(5, self.nos, alpha=2)
         pan_bws = pan_bw_gamut[pan_bws]
         
-        rest_prop_gamut = np.linspace(0, 0.25, 5)
+        rest_prop_gamut = np.linspace(0.1, 0.5, 5)
         rest_props = h_tools.dc_alg(5, self.nos, alpha=2)
         rest_props = rest_prop_gamut[rest_props]
         
@@ -481,7 +481,7 @@ class Instance:
 
 def build(save_piece_pickle=False, use_pickles=False, save_pickles=False):
     noc = 8
-    dur_tot = 39*60
+    dur_tot = 33*60
     fund = 150
     if use_pickles:
         t = pickle.load(open('pickles/t.p', 'rb'))

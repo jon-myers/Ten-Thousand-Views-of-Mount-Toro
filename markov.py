@@ -109,7 +109,7 @@ def enumerate_freqs(mode, fund, low, high, for_pivots=True):
 
 def make_pluck_phrase(mode, fund, size, dur_tot, nCVI,
     freq_range=(250, 500), start_idx=None, end_idx=None, p_transition=None,
-    pivot_ratio=0.25, hold_ratio=0.6, attack_ratio=0.66, pluck_amp=0.75):
+    pivot_ratio=0.25, hold_ratio=0.6, attack_ratio=0.66, pluck_amp=0.75, coef=0.45):
     """Makes a dictionary that can be interpretted by  supercollider SynthDef
     instrument `\moving_pluck`.
 
@@ -185,6 +185,7 @@ def make_pluck_phrase(mode, fund, size, dur_tot, nCVI,
     moving_pluck_dict['durTot'] = dur_tot
     moving_pluck_dict['releaseDur'] = 3 * dur_tot
     moving_pluck_dict['symps'] = make_symps_from_mode(mode, fund)
+    moving_pluck_dict['coef'] = coef
     return moving_pluck_dict
 
 
@@ -329,7 +330,7 @@ def make_symps_from_mode(mode, fund):
 def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
     p_transitions, proportions, freq_range=(250, 500),
     start_idx=None, end_idx=None, pivot_ratio=0.25, hold_ratio=0.5, attack_ratio=0.66,
-    pluck_amp=0.75):
+    pluck_amp=0.75, coef=0.4):
     """Makes a dictionary that can be interpretted by  supercollider SynthDef
     instrument `\moving_pluck`.
 
@@ -380,7 +381,7 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
         print('this one actually does happen sometimes')
         return make_pluck_phrase(modes[0], fund, size, dur_tot, nCVI, freq_range,
                 start_idx, end_idx, p_transitions[0], pivot_ratio, hold_ratio,
-                attack_ratio, pluck_amp)
+                attack_ratio, pluck_amp, coef)
     else:
 
         crx_idxs = [np.where(starts > mp)[0][0] for mp in midpoints]
@@ -478,6 +479,7 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
         moving_pluck_dict['durTot'] = dur_tot
         moving_pluck_dict['releaseDur'] = 3 * dur_tot
         moving_pluck_dict['symps'] = make_symps_from_mode(modes[0], fund)
+        moving_pluck_dict['coef'] = coef
 
         # here's where I will do the converting to 'real time' stuff
 

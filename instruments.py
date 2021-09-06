@@ -1009,10 +1009,13 @@ class MovingPluck:
             phrase_timings = self.il_phrase_timings[il]
             
             td_mult_gamut = 2 ** np.linspace(-1 * Golden ** (il/2), Golden ** (il/2), 10)
-            td_mult = h_tools.dc_alg(10, len(self.il_phrase_timings[il]), alpha=2)
+            td_mult = h_tools.dc_alg(10, len(phrase_timings), alpha=2)
             td_mult = td_mult_gamut[td_mult] * avg_td
             
-            
+            bw = 0.05 * (Golden ** il)
+            coef_gamut = np.linspace(0.5-bw, 0.5+bw, 10)
+            coefs = h_tools.dc_alg(10, len(phrase_timings), alpha=2)
+            coefs = coef_gamut[coefs]
             # breakpoint()
             for idx, pt in enumerate(phrase_timings):
                 p_td = td_mult[idx]
@@ -1022,9 +1025,9 @@ class MovingPluck:
                 dur_tot = pt['cy_dur'] # keep it in cy, then convert later
                 modes = []
                 tts = []
-                for idx in range(len(pt['modes'])):
-                    var_idx = pt['variations'][idx]
-                    mode_idx = pt['modes'][idx]
+                for idx_ in range(len(pt['modes'])):
+                    var_idx = pt['variations'][idx_]
+                    mode_idx = pt['modes'][idx_]
                     mode = self.piece.modes[var_idx][mode_idx]
                     modes.append(mode)
                     tt = self.tts[mode_idx][var_idx]
@@ -1036,11 +1039,12 @@ class MovingPluck:
                 if len(modes) == 1:
                     pp = make_pluck_phrase(modes[0], self.piece.fund, size,
                         dur_tot, p_nCVI, (freq_min[idx], 2*freq_min[idx] * (Golden ** (il/2))),
-                        p_transition=tts[0], attack_ratio=attack_ratio)
+                        p_transition=tts[0], attack_ratio=attack_ratio, coef=coefs[idx])
                 else:
                     pp = make_multi_changing_pluck_phrase(modes, self.piece.fund,
                         size, dur_tot, p_nCVI, tts, midpoints,
-                        (freq_min[idx], 2*freq_min[idx] * (Golden ** (il/2))), attack_ratio=attack_ratio)
+                        (freq_min[idx], 2*freq_min[idx] * (Golden ** (il/2))), 
+                        attack_ratio=attack_ratio, coef=coefs[idx])
                     # next thing to do is convert this timing stuff,
                 # which is in cycles, to real time. will require including the
                 # cy start time in tphhe function itself? or going through some
