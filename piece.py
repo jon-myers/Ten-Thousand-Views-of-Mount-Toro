@@ -8,7 +8,7 @@ import json
 from harmony_tools import utils as h_tools
 import pickle
 from popcorn import Timespan
-from klank import Klank_alt 
+from klank import Klank_alt
 
 class Piece:
 
@@ -40,7 +40,7 @@ class Piece:
         self.assess_chord_substitutions()
         # self.compile_plucks()
         # self.format_plucks_JSON()
-        self.klanks = Klank_alt(self)        
+        self.klanks = Klank_alt(self)
         self.make_moving_plucks()
         self.make_popcorn()
 
@@ -73,7 +73,7 @@ class Piece:
         path = 'JSON/sympathetics.JSON'
         json.dump(self.symp_packets, open(path, 'w'), cls=h_tools.NpEncoder)
 
-    
+
 
 
 
@@ -114,29 +114,29 @@ class Piece:
         nCVI_bws = rsm(self.nos, 30) * self.nos * 30
         attack_avgs = rsm(self.nos, 40) * self.nos * 0.01
         attack_avg_max_bws = rsm(self.nos, 40) * self.nos * 1.5
-        
+
         pan_ctr_gamut = np.linspace(-0.8, 0.8, 5)
         pan_ctr_starts = h_tools.dc_alg(5, self.nos, alpha=2)
         pan_ctr_starts = pan_ctr_gamut[pan_ctr_starts]
         pan_ctr_ends = h_tools.dc_alg(5, self.nos, alpha=2)
         pan_ctr_ends = pan_ctr_gamut[pan_ctr_ends]
-        
+
         pan_bw_gamut = np.linspace(0, 0.3, 5)
         pan_bws = h_tools.dc_alg(5, self.nos, alpha=2)
         pan_bws = pan_bw_gamut[pan_bws]
-        
+
         rest_prop_gamut = np.linspace(0.1, 0.5, 5)
         rest_props = h_tools.dc_alg(5, self.nos, alpha=2)
         rest_props = rest_prop_gamut[rest_props]
-        
+
         rest_spread_gamut = np.linspace(0, 1, 5)
         rest_spreads = h_tools.dc_alg(5, self.nos, alpha=2)
         rest_spreads = rest_spread_gamut[rest_spreads]
-        
+
         rest_nCVI_gamut = np.linspace(20, 60, 5)
         rest_nCVIs = h_tools.dc_alg(5, self.nos, alpha=2)
         rest_nCVIs = rest_nCVI_gamut[rest_nCVIs]
-        
+
 
         self.timespans = []
         # breakpoint()
@@ -474,16 +474,16 @@ class Instance:
 
 def build(
 save_piece_pickle=False, use_pickles=False, save_pickles=False, noc=9, dur_tot=1800,
-):
+f=0.5, num_of_modes=12):
     # noc = 9
     # dur_tot = 35*60
     fund = 150
     if use_pickles:
         t = pickle.load(open('pickles/t.p', 'rb'))
         modes = pickle.load(open('pickles/modes.p', 'rb'))
-    modes = make_mode_sequence((10, 20))
+    modes = make_mode_sequence((num_of_modes, num_of_modes+1))
     events_per_cycle = np.shape(modes)[1]
-    t = Time(dur_tot=dur_tot, f=0.707, noc=noc)
+    t = Time(dur_tot=dur_tot, f=f, noc=noc)
     t.set_cycle(len(modes[0]))
     if save_pickles:
         pickle.dump(t, open('pickles/t.p', 'wb'))
