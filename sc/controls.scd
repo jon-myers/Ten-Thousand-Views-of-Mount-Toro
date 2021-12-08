@@ -182,7 +182,7 @@ SynthDef.new(\moving_pluck, {|out=0, releaseDur, coef|
 ~phrases = ~phrases.readAllString.parseYAML;
 
 ~dursBetweenOnsets = Array.fill(~phrases.size - 1, {arg i; ~phrases[i+1]["rt_start"].asFloat - ~phrases[i]["rt_start"].asFloat});
-~dursBetweenOnsets = ~dursBetweenOnsets.add(~phrases[~phrases.size-1]["rt_durTot"]);
+~dursBetweenOnsets = ~dursBetweenOnsets.add(~phrases[~phrases.size-1]["rt_durTot"].asFloat);
 
 ~floatifyPivots = {|pivots|
 	var outPivots;

@@ -14,7 +14,7 @@ import numpy as np
 # time in the final piece, as stretched to end at dur_tot, I will use `real_time`
 class Time:
     """Creates a time object, for a looping cycle (or buffer) with a
-    variable speed, fixed accelration, which can be queried to, for example,
+    variable speed, fixed acceleration, which can be queried to, for example,
     get the phase, tempo-level, and irama at a particular moment in real time.
     """
 
@@ -45,7 +45,7 @@ class Time:
     #     than numeric. (in order to get this to match b, I had to remove a
     #     negative sign from the answer provided by integral-calculator.com !?)"""
     #     part = -math.log(self.z) * (time ** self.f)
-    #     return gamma(1/self.f, part) * time / (self.f * (part ** (1 / self.f)))
+    #     return gamma(se1/self.f, part) * time / (self.f * (part ** (1 / self.f)))
 
     def b(self, time):
         """Number of beats passed since beginning of piece."""
@@ -128,7 +128,7 @@ class Time:
         self.cycle_durs, self.cycle_starts = rhythmic_sequence_maker(nos, nCVI,
                                                              start_times='both')
         self.cycle_ends = np.append(self.cycle_starts[1:], [1])
-        min_dur = 7
+        min_dur = 17
         max_subdivs = 5
         self.event_dur_dict = {}
         self.event_map = {}

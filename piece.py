@@ -38,18 +38,11 @@ class Piece:
             for instance in cycle.instances:
                 instance.make_plucks()
         self.assess_chord_substitutions()
-        self.compile_plucks()
-        self.format_plucks_JSON()
-
-        self.klanks = Klank_alt(self)
-        
-        
-        # self.make_klanks()
-        # self.save_melody_JSON()
+        # self.compile_plucks()
+        # self.format_plucks_JSON()
+        self.klanks = Klank_alt(self)        
         self.make_moving_plucks()
-        self.make_sympathetics()
         self.make_popcorn()
-        # breakpoint()
 
     def make_sympathetics(self):
         regions = self.consolidated_em
@@ -291,8 +284,8 @@ class Piece:
         # also, gonna assign the proportion between an entire period of a
         # given irama with real time, for figuring out rhythmic things that will
         # be calculated "flat", that will ultamitely get transformed to slowing.
-        cy_starts = [self.time.cycles_from_mm(2 ** i) for i in range(4)]
-        cy_ends = [self.time.cycles_from_mm(2 ** i) for i in range(1, 5)]
+        cy_starts = [self.time.cycles_from_mm(2 ** -i) for i in range(4)]
+        cy_ends = [self.time.cycles_from_mm(2 ** -i) for i in range(1, 5)]
         cy_durs = [cy_ends[i] - cy_starts[i] for i in range(4)]
         rt_starts = [self.time.real_time_from_cycles(i) for i in cy_starts]
         rt_ends = [self.time.real_time_from_cycles(i) for i in cy_ends]
@@ -479,16 +472,18 @@ class Instance:
                 packet['rt_dur'] = rt_end - rt_start
             self.plucks.append(packets)
 
-def build(save_piece_pickle=False, use_pickles=False, save_pickles=False):
-    noc = 8
-    dur_tot = 33*60
+def build(
+save_piece_pickle=False, use_pickles=False, save_pickles=False, noc=9, dur_tot=1800,
+):
+    # noc = 9
+    # dur_tot = 35*60
     fund = 150
     if use_pickles:
         t = pickle.load(open('pickles/t.p', 'rb'))
         modes = pickle.load(open('pickles/modes.p', 'rb'))
     modes = make_mode_sequence((10, 20))
     events_per_cycle = np.shape(modes)[1]
-    t = Time(dur_tot=dur_tot, f=0.5, noc=noc)
+    t = Time(dur_tot=dur_tot, f=0.707, noc=noc)
     t.set_cycle(len(modes[0]))
     if save_pickles:
         pickle.dump(t, open('pickles/t.p', 'wb'))

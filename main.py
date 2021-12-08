@@ -3,5 +3,6 @@ from piece import build
 # lprofiler = LineProfiler()
 # lp_wrapper = lprofiler(build)
 # @profile
-build(use_pickles=False)
+dur_tot = 20 * 60
+build(use_pickles=False, dur_tot=dur_tot)
 # lp_wrapper(save_pickle=True)
