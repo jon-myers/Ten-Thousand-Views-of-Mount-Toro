@@ -1,3 +1,5 @@
+
+
 (var server, p_def, mp_def, k_defs;
 (
 (// klank
@@ -241,14 +243,14 @@ r = Pbind(
 	\coef, Pseq(~coefs, 1)
 );
 
-a = Ppar([q, p, r]).asScore(40*60, timeOffset:0.001);
+a = Ppar([q, p, r]).asScore(thisProcess.argv[0].asFloat, timeOffset:0.001);
 
 k_defs.do{|def| a.add([0.0, [\d_recv, def.asBytes]])};
 a.add([0.0, [\d_recv, p_def.asBytes]]);
 a.add([0.0, [\d_recv, mp_def.asBytes]]);
 a.sort;
 a.recordNRT(
-	outputFilePath: "~/nrt_all.wav".standardizePath,
+	outputFilePath: ("/Users/jon/Documents/2021/azure/audio/" ++ thisProcess.argv[1] ++ ".wav").standardizePath,
 	sampleRate: 48000,
 	headerFormat: "WAV",
 	sampleFormat: "int16",
@@ -259,10 +261,6 @@ a.recordNRT(
 server.remove;
 )
 )
-
-
-
-
 
 
 
