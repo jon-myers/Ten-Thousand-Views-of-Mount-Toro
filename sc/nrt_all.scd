@@ -4,7 +4,7 @@
 (
 (// klank
 // ~dir = PathName.new(Document.current.dir);
-~dir = PathName("/Users/jon/Documents/2021/azure/sc"); // this needs to change depending on machine
+~dir = PathName("/root/azure/sc"); // this needs to change depending on machine
 ~jsonPath = ~dir.fullPath[..~dir.fullPath.size-3] ++ 'JSON/';
 
 
@@ -250,7 +250,7 @@ a.add([0.0, [\d_recv, p_def.asBytes]]);
 a.add([0.0, [\d_recv, mp_def.asBytes]]);
 a.sort;
 a.recordNRT(
-	outputFilePath: ("/Users/jon/Documents/2021/azure/audio/" ++ thisProcess.argv[1] ++ ".wav").standardizePath,
+	outputFilePath: ("/root/audioGeneration/" ++ thisProcess.argv[1] ++ ".wav").standardizePath,
 	sampleRate: 48000,
 	headerFormat: "WAV",
 	sampleFormat: "int16",
