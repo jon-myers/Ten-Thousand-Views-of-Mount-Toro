@@ -13,6 +13,6 @@ while i < 10:
 
     os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
     os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
-    path = '../audio/' + str(i) + '.wav'
+    path = '../audioGeneration/' + str(i) + '.wav'
     if exists(path):
         i += 1
