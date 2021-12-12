@@ -7,8 +7,6 @@ mp = json.load(open('JSON/meta_params.JSON'))
 
 i = 0
 while i < 10:
-mp = json.load(open('JSON/meta_params.JSON'))
-for i in range(1):
     f, dur, cycles, chords = mp[i]
 
     os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
