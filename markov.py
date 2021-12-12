@@ -33,7 +33,10 @@ def markov_sequence(p_init=None, p_transition=None, sequence_length=None):
     if p_init is None:
         p_init = equilibrium_distribution(p_transition)
     initial_state = list(multinomial.rvs(1, p_init)).index(1)
-    states = [initial_state]
+    if sequence_length > 0:
+        states = [initial_state]
+    else:
+        states = []
     for _ in range(sequence_length - 1):
         p_tr = p_transition[states[-1]]
         new_state = list(multinomial.rvs(1, p_tr)).index(1)
@@ -400,7 +403,7 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
         for i, ad in enumerate(all_durs):
             note_seq = markov_sequence(p_init, p_transitions[i], len(ad))
             note_seqs.append(note_seq)
-            if i < len(all_durs) - 1:
+            if i < len(all_durs) - 1 and len(note_seq) > 0:
                 p_init = np.zeros(len(modes[i+1]))
                 p_init[closest_index(modes[i][note_seq[-1]], modes[i+1])] = 1
         # breakpoint()
