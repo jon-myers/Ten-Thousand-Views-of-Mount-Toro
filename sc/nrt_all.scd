@@ -250,7 +250,11 @@ a.add([0.0, [\d_recv, p_def.asBytes]]);
 a.add([0.0, [\d_recv, mp_def.asBytes]]);
 a.sort;
 a.recordNRT(
+<<<<<<< HEAD
 	outputFilePath: ("/root/audioGeneration/" ++ thisProcess.argv[1] ++ ".wav").standardizePath,
+=======
+	outputFilePath: ("/Users/jon/Documents/2021/azure/audio/" ++ thisProcess.argv[1] ++ ".wav").standardizePath,
+>>>>>>> afb91b3 (generating from meta_params)
 	sampleRate: 48000,
 	headerFormat: "WAV",
 	sampleFormat: "int16",
