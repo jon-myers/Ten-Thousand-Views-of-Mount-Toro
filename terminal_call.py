@@ -2,6 +2,7 @@ import os
 import sys
 import json
 from os.path import exists
+from pydub import AudioSegment
 
 mp = json.load(open('JSON/meta_params.JSON'))
 
@@ -12,5 +13,5 @@ while i < 10:
     os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
     os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
     path = '../audioGeneration/' + str(i) + '.wav'
-    if exists(path):
-        i += 1
+    audio = AudioSegment.from_wab(path)
+    audio.export(str(i) + '.mp3', formap='mp3')
