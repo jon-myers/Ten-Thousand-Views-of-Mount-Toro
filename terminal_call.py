@@ -7,7 +7,10 @@ mp = json.load(open('JSON/meta_params.JSON'))
 audio_files = glob.glob("../audioGeneration/*")
 af_nums = list(set([int(re.sub('\D', '', af)) for af in audio_files]))
 af_nums.sort()
-af_min = af_nums[0]
+if len(af_nums) > 0: 
+    af_min = af_nums[0]
+else:
+    af_min = 0
 
 
 i = af_min
