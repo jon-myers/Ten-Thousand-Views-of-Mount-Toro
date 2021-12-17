@@ -23,7 +23,7 @@ while i < (af_min + 100):
     if os.path.exists(wav_path):
         os.system("rm " + wav_path)
     if os.path.exists(mp3_path):
-        os.system("rm" + mp3_path)
+        os.system("rm " + mp3_path)
 
     os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
     os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
