@@ -21,5 +21,5 @@ while i < af_min + 100:
     os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
     path = '../audioGeneration/' + str(i) + '.wav'
     audio = AudioSegment.from_wav(path)
-    audio.export('../audioGeneration/' + str(i) + '.mp3', formap='mp3')
+    audio.export('../audioGeneration/' + str(i) + '.mp3', format='mp3')
     
