@@ -20,6 +20,6 @@ while i < af_min + 100:
     os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
     os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
     path = '../audioGeneration/' + str(i) + '.wav'
-    audio = AudioSegment.from_wab(path)
+    audio = AudioSegment.from_wav(path)
     audio.export('../audioGeneration/' + str(i) + '.mp3', formap='mp3')
     
