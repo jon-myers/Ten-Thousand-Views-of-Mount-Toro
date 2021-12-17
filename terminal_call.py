@@ -5,15 +5,22 @@ from pydub import AudioSegment
 mp = json.load(open('JSON/meta_params.JSON'))
 
 audio_files = glob.glob("../audioGeneration/*")
-af_nums = list(set([int(re.sub('\D', '', af)) for af in audio_files]))
+pre_set_af_nums = [int(re.sub('\D', '', af)) for af in audio_files]
+af_nums = list(set(pre_set_af_nums))
 af_nums.sort()
+pre_set_af_nums.sort()
 if len(af_nums) > 0: 
     af_min = af_nums[0]
 else:
     af_min = 0
 
+af_max = af_nums[-1]
 
-i = af_min
+
+if pre_set_af_nums.count(pre_set_af_nums[-1]) == 2:
+    i = af_max + 1
+else:
+    i = af_max
 while i < (af_min + 100):
     f, dur, cycles, chords = mp[i]
     sub_path = '../audioGeneration/' + str(i)
