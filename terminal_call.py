@@ -14,12 +14,17 @@ else:
 
 
 i = af_min
-while i < af_min + 100:
+while i < (af_min + 100):
     f, dur, cycles, chords = mp[i]
 
     os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
     os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
-    path = '../audioGeneration/' + str(i) + '.wav'
-    audio = AudioSegment.from_wav(path)
-    audio.export('../audioGeneration/' + str(i) + '.mp3', format='mp3')
+    sub_path = '../audioGeneration/' + str(i)
+    wav_path = sub_path + '.wav'
+    mp3_path = sub_path + '.mp3'
+    audio = AudioSegment.from_wav(wav_path)
+    audio.export(mp3_path, format='mp3')
+    
+    if os.path.exists(path) and os.path.exists(mp3_path):
+        i += 1
     
