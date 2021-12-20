@@ -14,7 +14,10 @@ if len(af_nums) > 0:
 else:
     af_min = 0
 
-af_max = af_nums[-1]
+if len(af_nums) == 0:
+    af_max = -1
+else:
+    af_max = af_nums[-1]
 
 i = af_max + 1
 while i < (af_min + 100):
