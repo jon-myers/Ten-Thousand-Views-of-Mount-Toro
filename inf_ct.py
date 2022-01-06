@@ -9,8 +9,9 @@ if os.path.isfile(pidfile):
 open(pidfile, 'w').write(pid)
 try:
     ct = 0
-    while True:
-        print(ct)
+    tot = 1000000
+    while ct < tot:
+        print(ct / tot)
 finally:
     os.unlink(pidfile)
 
