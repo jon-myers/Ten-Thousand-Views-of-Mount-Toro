@@ -12,3 +12,10 @@ try:
         print(ct)
 finally:
     os.unlink(pidfile)
+
+
+def clean_up():
+    os.unlink(pidfile)
+    
+import atexit
+atexit.register(clean_up)
