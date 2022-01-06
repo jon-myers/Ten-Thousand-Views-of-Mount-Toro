@@ -8,7 +8,7 @@ if os.path.isfile(pidfile):
 open(pidfile, 'w').write(pid)
 try:
     ct = 0
-    while ct < 100000:
-        ct += 1
+    while True:
+        print(ct)
 finally:
     os.unlink(pidfile)
