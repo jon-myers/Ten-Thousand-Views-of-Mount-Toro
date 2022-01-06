@@ -1,5 +1,5 @@
 import os, sys
-from signal import signal, SIGTERM, SIGKILL
+from signal import signal, SIGTERM
 
 pid = str(os.getpid())
 pidfile = 'mydaemon.pid'
@@ -25,4 +25,3 @@ import atexit
 atexit.register(clean_up)
 
 signal(SIGTERM, clean_up)
-signal(SIGKILL, clean_up)
