@@ -9,7 +9,7 @@ if os.path.isfile(pidfile):
 open(pidfile, 'w').write(pid)
 try:
     ct = 0
-    tot = 1000000
+    tot = 100000
     while ct < tot:
         
         print(ct / tot)
