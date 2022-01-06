@@ -53,3 +53,4 @@ for i in missing_views:
 while i < (af_min + 100):
     i = make_view(i)
     
+sys.exit()
