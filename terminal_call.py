@@ -8,18 +8,24 @@ def make_view(i, increment=True):
     wav_path = sub_path + '.wav'
     if os.path.exists(wav_path):
         os.system("rm " + wav_path)
-    result = None
-    while result is None:
-        try:
-            os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
-            result = 'notNone'
-        except:
-            pass
+    result = False
+    while not result:
+        os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
+        result = test_JSON()
     os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
     if os.path.exists(wav_path):
         i += 1
     return i
 
+
+def test_JSON():
+    """make sure JSON file is all good for supercollider"""
+    mpv = json.load(open('JSON/moving_pluck_phrases.JSON'))
+    out = True
+    for i in range(len(mpv)):
+        if len(mpv[i]['notes']) != len(mpv[i]['rt_durs']):
+            out = False
+    return out 
 
 
 mp = json.load(open('JSON/meta_params.JSON'))
