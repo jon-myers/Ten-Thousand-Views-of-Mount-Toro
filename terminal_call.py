@@ -30,8 +30,14 @@ while i < (af_min + 100):
         os.system("rm " + wav_path)
     # if os.path.exists(mp3_path):
     #     os.system("rm " + mp3_path)
-
-    os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
+    result = None
+    while result is None:
+        try:
+            os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
+            result = 'notNone'
+        except:
+            pass
+        
     os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
     # audio = AudioSegment.from_wav(wav_path)
     # audio.export(mp3_path, format='mp3')

@@ -421,6 +421,9 @@ def make_multi_changing_pluck_phrase(modes, fund, size, dur_tot, nCVI,
         all_notes = [modes[i][note_seqs[i]] for i in range(len(all_durs))]
         all_notes = np.concatenate(all_notes)
         all_notes = registrate(all_notes*fund, freq_range[0], freq_range[1])
+        
+        if len(all_notes) != len(durs):
+            sys.exit("Will break Supercollider, no good, try again!")
 
 
 
