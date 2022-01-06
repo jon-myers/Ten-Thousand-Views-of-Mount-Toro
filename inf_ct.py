@@ -24,4 +24,4 @@ def clean_up():
 import atexit
 atexit.register(clean_up)
 
-signal(SIGTERM, clean_up)
+# signal(SIGTERM, clean_up)
