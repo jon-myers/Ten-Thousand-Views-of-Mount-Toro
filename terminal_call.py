@@ -1,6 +1,26 @@
 import os, re, sys, json, glob
 from os.path import exists
-# from pydub import AudioSegment
+
+def make_view(i, increment=True):
+    print('Generating view no. ' + str(i) + '!')
+    f, dur, cycles, chords = mp[i]
+    sub_path = '../audioGeneration/' + str(i)
+    wav_path = sub_path + '.wav'
+    if os.path.exists(wav_path):
+        os.system("rm " + wav_path)
+    result = None
+    while result is None:
+        try:
+            os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
+            result = 'notNone'
+        except:
+            pass
+    os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
+    if os.path.exists(wav_path):
+        i += 1
+    return i
+
+
 
 mp = json.load(open('JSON/meta_params.JSON'))
 
@@ -27,22 +47,3 @@ for i in missing_views:
 while i < (af_min + 100):
     i = make_view(i)
     
-
-def make_view(i, increment=True):
-    print('Generating view no. ' + str(i) + '!')
-    f, dur, cycles, chords = mp[i]
-    sub_path = '../audioGeneration/' + str(i)
-    wav_path = sub_path + '.wav'
-    if os.path.exists(wav_path):
-        os.system("rm " + wav_path)
-    result = None
-    while result is None:
-        try:
-            os.system("python3 main.py " + str(f) + ' ' + str(dur) + ' ' + str(cycles) + ' ' + str(chords))
-            result = 'notNone'
-        except:
-            pass
-    os.system("sclang sc/nrt_all.scd " + str(dur + 30) + ' ' + str(i))
-    if os.path.exists(wav_path):
-        i += 1
-    return i
