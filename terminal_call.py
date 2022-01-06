@@ -29,6 +29,7 @@ while i < (af_min + 100):
     
 
 def make_view(i, increment=True):
+    print('Generating view no. ' + str(i) + '!')
     f, dur, cycles, chords = mp[i]
     sub_path = '../audioGeneration/' + str(i)
     wav_path = sub_path + '.wav'
