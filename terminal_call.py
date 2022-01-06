@@ -28,29 +28,35 @@ def test_JSON():
     return out 
 
 
-mp = json.load(open('JSON/meta_params.JSON'))
+pid = str(os.getpid())
+pidfile = 'tmp/mydaemon.pid'
+if os.path.isfile(pidfile):
+    print('%s already exists, exiting' % pidfile)
+    sys.exit()
+open(pidfile, 'w').write(pid)
 
-audio_files = glob.glob("../audioGeneration/*")
-pre_set_af_nums = [int(re.sub('\D', '', af)) for af in audio_files]
-af_nums = list(set(pre_set_af_nums))
-af_nums.sort()
-pre_set_af_nums.sort()
-if len(af_nums) > 0: 
-    af_min = af_nums[0]
-else:
-    af_min = 0
-if len(af_nums) == 0:
-    af_max = -1
-else:
-    af_max = af_nums[-1]
-i = af_max + 1
+try:
+    mp = json.load(open('JSON/meta_params.JSON'))
+    audio_files = glob.glob("../audioGeneration/*")
+    pre_set_af_nums = [int(re.sub('\D', '', af)) for af in audio_files]
+    af_nums = list(set(pre_set_af_nums))
+    af_nums.sort()
+    pre_set_af_nums.sort()
+    if len(af_nums) > 0: 
+        af_min = af_nums[0]
+    else:
+        af_min = 0
+    if len(af_nums) == 0:
+        af_max = -1
+    else:
+        af_max = af_nums[-1]
+    i = af_max + 1
 
-
-missing_views = [v for v in range(af_min, af_min + 100) if v not in af_nums]
-for i in missing_views:
-    make_view(i)
-
-while i < (af_min + 100):
-    i = make_view(i)
-    
-sys.exit()
+    missing_views = [v for v in range(af_min, af_min + 100) if v not in af_nums]
+    for i in missing_views:
+        make_view(i)
+    while i < (af_min + 100):
+        i = make_view(i)    
+finally: 
+    os.unlink(pidfile)
+    sys.exit()
