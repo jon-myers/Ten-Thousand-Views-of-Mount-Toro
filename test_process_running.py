@@ -1,6 +1,6 @@
 import subprocess
 
-cmd = ['pgrep -f .*python.*terminal_call.py']
+cmd = ['pgrep -f .*inf_ct.py']
 process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, 
 stderr=subprocess.PIPE)
 my_pid, err = process.communicate()
