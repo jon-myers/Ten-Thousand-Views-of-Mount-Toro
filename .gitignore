@@ -1,0 +1,5 @@
+
+.DS_Store
+.reaper
+__pycache__
+audio
