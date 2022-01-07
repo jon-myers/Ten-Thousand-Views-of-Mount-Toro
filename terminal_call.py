@@ -54,9 +54,7 @@ try:
 
     missing_views = [v for v in range(af_min, af_min + 100) if v not in af_nums]
     for i in missing_views:
-        make_view(i)
-    while i < (af_min + 100):
-        i = make_view(i)    
+        make_view(i)  
 finally: 
     os.unlink(pidfile)
     sys.exit()
