@@ -19,10 +19,10 @@ import sys, json
 # print(f, dur_tot, noc, num_of_modes)
 
 meta_params = json.load(open('JSON/meta_params.JSON', 'rb'))
-print(meta_params[81])
-f, dur_tot, noc, num_of_modes = meta_params[81]
+print(meta_params[42])
+f, dur_tot, noc, num_of_modes = meta_params[42]
 noc = int(noc)
 num_of_modes = int(num_of_modes)
 
-# build(True, False, True, dur_tot=dur_tot, f=f, num_of_modes=num_of_modes, noc=noc)
+build(True, False, True, dur_tot=dur_tot, f=f, num_of_modes=num_of_modes, noc=noc)
 # lp_wrapper(save_pickle=True)
