@@ -19,8 +19,13 @@ import sys, json
 # print(f, dur_tot, noc, num_of_modes)
 
 meta_params = json.load(open('JSON/meta_params.JSON', 'rb'))
-print(meta_params[42])
-f, dur_tot, noc, num_of_modes = meta_params[42]
+# print(meta_params[42])
+
+for i, mp in enumerate(meta_params[:100]):
+    if mp[2] < 10 and mp[3] < 10:
+        print(i, mp, '\n')
+# print(meta_params[76])
+f, dur_tot, noc, num_of_modes = meta_params[97]
 noc = int(noc)
 num_of_modes = int(num_of_modes)
 
